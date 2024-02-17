@@ -20,6 +20,7 @@
 #include <SGCore/Render/RenderPipelinesManager.h>
 #include <SGCore/Graphics/API/ITexture2D.h>
 #include <stb_image_write.h>
+#include <SGCore/Render/PBRRP/PBRRenderPipeline.h>
 
 #include "GameMain.h"
 #include "Systems/DayNightCycleSystem.h"
@@ -28,6 +29,9 @@
 
 void OceansEdge::GameMain::init()
 {
+    SGCore::RenderPipelinesManager::registerRenderPipeline(SGCore::MakeRef<SGCore::PBRRenderPipeline>());
+    SGCore::RenderPipelinesManager::setCurrentRenderPipeline<SGCore::PBRRenderPipeline>();
+    
     // todo:
     // SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge");
     
@@ -120,7 +124,7 @@ void OceansEdge::GameMain::init()
     
     // INITIALIZING SKYBOX ---------------------------------------
     
-    {
+    /*{
         std::vector<entt::entity> skyboxEntities;
         skyboxModel->m_nodes[0]->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](const auto& entity) {
             skyboxEntities.push_back(entity);
@@ -129,18 +133,19 @@ void OceansEdge::GameMain::init()
         SGCore::Mesh& skyboxMesh = m_worldScene->getECSRegistry().get<SGCore::Mesh>(skyboxEntities[2]);
         SGCore::Atmosphere& atmosphereScattering = m_worldScene->getECSRegistry().emplace<SGCore::Atmosphere>(skyboxEntities[2]);
         // atmosphereScattering.m_sunRotation.z = 90.0;
-        /*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
+        *//*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
                                                                standardCubemap
-        );*/
-        skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
-        SGCore::MeshesUtils::loadMeshShader(skyboxMesh.m_base, "SkyboxShader");
+        );*//*
+        
+       *//* skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
+        SGCore::MeshesUtils::loadMeshShader(skyboxMesh.m_base, "SkyboxShader");*//*
         skyboxMesh.m_base.m_meshDataRenderInfo.m_enableFacesCulling = false;
         
         SGCore::Transform& skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Transform>(skyboxEntities[2]);
         // auto transformComponent = skyboxEntities[2]->getComponent<SGCore::Transform>();
         
         skyboxTransform.m_ownTransform.m_scale = { 1150, 1150, 1150 };
-    }
+    }*/
     
     // -----------------------------------------------------------
     
@@ -174,6 +179,17 @@ void OceansEdge::GameMain::init()
         stbi_write_png("perlin_noise_test.png", perlinMapSize.x, perlinMapSize.y, 4,
                        (perlinNoise.m_map.data()), 4 * perlinMapSize.x);
     }
+    
+    // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
+    std::cout <<
+    "sizeof Transform: " << sizeof(SGCore::Transform) <<
+    ", EntityBaseInfo: " << sizeof(SGCore::EntityBaseInfo) <<
+    ", Mesh: " << sizeof(SGCore::Mesh) <<
+    ", IMeshData: " << sizeof(SGCore::IMeshData) <<
+    ", IMaterial: " << sizeof(SGCore::IMaterial) <<
+    ", IShader: " << sizeof(SGCore::IShader) <<
+    ", ISubPassShader: " << sizeof(SGCore::ISubPassShader) <<
+    std::endl;
     
     // -----------------------------------------------------------
     
@@ -222,7 +238,7 @@ void OceansEdge::GameMain::update()
         
         double t0 = SGCore::Scene::getCurrentScene()->getUpdateFunctionExecutionTime();
         double t1 = SGCore::Scene::getCurrentScene()->getFixedUpdateFunctionExecutionTime();
-        double t2 = SGCore::RenderPipelinesManager::getRenderPipeline()->getRenderPassesExecutionTime();
+        double t2 = SGCore::RenderPipelinesManager::getCurrentRenderPipeline()->getRenderPassesExecutionTime();
         double t3 = SGCore::CoreMain::getWindow().getSwapBuffersExecutionTime();
         
         ImGui::Text("Scene update execution: %f", t0);

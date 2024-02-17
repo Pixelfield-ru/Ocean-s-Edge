@@ -7,9 +7,12 @@
 #include <SGCore/Scene/Scene.h>
 #include <SGCore/Render/Atmosphere/Atmosphere.h>
 
-void OceansEdge::DayNightCycleSystem::fixedUpdate(const SGCore::Ref<SGCore::Scene>& scene) noexcept
+void OceansEdge::DayNightCycleSystem::fixedUpdate() noexcept
 {
-    auto atmospheresView = scene->getECSRegistry().view<SGCore::Atmosphere>();
+    auto lockedScene = m_scene.lock();
+    if(!lockedScene) return;
+    
+    auto atmospheresView = lockedScene->getECSRegistry().view<SGCore::Atmosphere>();
     
     atmospheresView.each([this](SGCore::Atmosphere& atmosphere) {
         atmosphere.m_sunRotation.x += m_cycleSpeed;

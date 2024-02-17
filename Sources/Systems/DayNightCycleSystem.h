@@ -18,7 +18,7 @@ namespace OceansEdge
     {
         float m_cycleSpeed = 0.01f;
         
-        void fixedUpdate(const SGCore::Ref<SGCore::Scene>& scene) noexcept final;
+        void fixedUpdate() noexcept final;
     };
 }
 
