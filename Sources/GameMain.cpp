@@ -22,10 +22,26 @@
 #include <stb_image_write.h>
 #include <SGCore/Render/PBRRP/PBRRenderPipeline.h>
 
+#include <BulletCollision/CollisionDispatch/btCollisionConfiguration.h>
+#include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
+#include <BulletCollision/BroadphaseCollision/btDispatcher.h>
+#include <BulletCollision/CollisionDispatch/btCollisionDispatcher.h>
+#include <BulletCollision/BroadphaseCollision/btBroadphaseInterface.h>
+#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
+#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
+#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+#include <LinearMath/btIDebugDraw.h>
+
 #include "GameMain.h"
 #include "Systems/DayNightCycleSystem.h"
 #include "BlocksTypes.h"
 #include "Atlas.h"
+
+btDefaultCollisionConfiguration* physCollisionConfig = new btDefaultCollisionConfiguration;
+btCollisionDispatcher* physDispatcher = new btCollisionDispatcher(physCollisionConfig);
+btBroadphaseInterface* physBroadphaseInterface = new btDbvtBroadphase();
+btSequentialImpulseConstraintSolver* physSequentialImpulseConstraintSolver = new btSequentialImpulseConstraintSolver;
+btDiscreteDynamicsWorld* physDiscreteDynamicsWorld = new btDiscreteDynamicsWorld(physDispatcher, physBroadphaseInterface, physSequentialImpulseConstraintSolver, physCollisionConfig);
 
 void OceansEdge::GameMain::init()
 {

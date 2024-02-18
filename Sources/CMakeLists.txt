@@ -58,6 +58,9 @@
  add_executable(${PROJECT_NAME} ${OCEANS_EDGE_SOURCES})
 
  target_link_libraries(${PROJECT_NAME} PRIVATE
+         ${BULLET_COLLISION_LIBRARY}
+         ${BULLET_DYNAMICS_LIBRARY}
+         ${BULLET_MATH_LIBRARY}
          SGCore
  )
 
