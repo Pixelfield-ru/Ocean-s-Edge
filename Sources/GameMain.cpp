@@ -37,12 +37,6 @@
 #include "BlocksTypes.h"
 #include "Atlas.h"
 
-btDefaultCollisionConfiguration* physCollisionConfig = new btDefaultCollisionConfiguration;
-btCollisionDispatcher* physDispatcher = new btCollisionDispatcher(physCollisionConfig);
-btBroadphaseInterface* physBroadphaseInterface = new btDbvtBroadphase();
-btSequentialImpulseConstraintSolver* physSequentialImpulseConstraintSolver = new btSequentialImpulseConstraintSolver;
-btDiscreteDynamicsWorld* physDiscreteDynamicsWorld = new btDiscreteDynamicsWorld(physDispatcher, physBroadphaseInterface, physSequentialImpulseConstraintSolver, physCollisionConfig);
-
 void OceansEdge::GameMain::init()
 {
     SGCore::RenderPipelinesManager::registerRenderPipeline(SGCore::MakeRef<SGCore::PBRRenderPipeline>());
@@ -65,11 +59,13 @@ void OceansEdge::GameMain::init()
     
     m_worldScene = SGCore::MakeRef<SGCore::Scene>();
     m_worldScene->createDefaultSystems();
-    SGCore::Scene::setCurrentScene(m_worldScene);
+    m_worldScene->m_name = "WorldScene";
+    SGCore::Scene::addScene(m_worldScene);
+    SGCore::Scene::setCurrentScene("WorldScene");
     
     auto dayNightCycleSystem = SGCore::MakeRef<DayNightCycleSystem>();
     dayNightCycleSystem->setScene(m_worldScene);
-    m_worldScene->getAllSystems().insert(dayNightCycleSystem);
+    m_worldScene->addSystem(dayNightCycleSystem);
     
     // -----------------------------------------------------------
     
