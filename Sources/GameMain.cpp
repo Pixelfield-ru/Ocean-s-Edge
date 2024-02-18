@@ -32,6 +32,14 @@ void OceansEdge::GameMain::init()
     SGCore::RenderPipelinesManager::registerRenderPipeline(SGCore::MakeRef<SGCore::PBRRenderPipeline>());
     SGCore::RenderPipelinesManager::setCurrentRenderPipeline<SGCore::PBRRenderPipeline>();
     
+    auto geniusJPG = SGCore::AssetManager::loadAsset<SGCore::ITexture2D>(
+            "../SGResources/textures/genius.jpg"
+    );
+    
+    geniusJPG->setRawName("GeniusTexture");
+    
+    geniusJPG->create();
+    
     // todo:
     // SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge");
     
@@ -44,7 +52,7 @@ void OceansEdge::GameMain::init()
     SGCore::Scene::setCurrentScene(m_worldScene);
     
     auto dayNightCycleSystem = SGCore::MakeRef<DayNightCycleSystem>();
-    
+    dayNightCycleSystem->setScene(m_worldScene);
     m_worldScene->getAllSystems().insert(dayNightCycleSystem);
     
     // -----------------------------------------------------------
@@ -124,7 +132,7 @@ void OceansEdge::GameMain::init()
     
     // INITIALIZING SKYBOX ---------------------------------------
     
-    /*{
+    {
         std::vector<entt::entity> skyboxEntities;
         skyboxModel->m_nodes[0]->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](const auto& entity) {
             skyboxEntities.push_back(entity);
@@ -133,19 +141,20 @@ void OceansEdge::GameMain::init()
         SGCore::Mesh& skyboxMesh = m_worldScene->getECSRegistry().get<SGCore::Mesh>(skyboxEntities[2]);
         SGCore::Atmosphere& atmosphereScattering = m_worldScene->getECSRegistry().emplace<SGCore::Atmosphere>(skyboxEntities[2]);
         // atmosphereScattering.m_sunRotation.z = 90.0;
-        *//*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
+        /*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
                                                                standardCubemap
-        );*//*
+        );*/
         
-       *//* skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
-        SGCore::MeshesUtils::loadMeshShader(skyboxMesh.m_base, "SkyboxShader");*//*
+        //skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
+        skyboxMesh.m_base.m_meshData->m_material->setShader(SGCore::MakeRef<SGCore::IShader>());
+        SGCore::MeshesUtils::loadMeshShader(skyboxMesh.m_base, "SkyboxShader");
         skyboxMesh.m_base.m_meshDataRenderInfo.m_enableFacesCulling = false;
         
         SGCore::Transform& skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Transform>(skyboxEntities[2]);
         // auto transformComponent = skyboxEntities[2]->getComponent<SGCore::Transform>();
         
         skyboxTransform.m_ownTransform.m_scale = { 1150, 1150, 1150 };
-    }*/
+    }
     
     // -----------------------------------------------------------
     
