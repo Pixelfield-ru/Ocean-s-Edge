@@ -17,8 +17,8 @@ namespace OceansEdge
     struct GameMain
     {
         static void init();
-        static void fixedUpdate();
-        static void update();
+        static void fixedUpdate(const double& dt, const double& fixedDt);
+        static void update(const double& dt);
         
     private:
         static inline SGCore::Ref<SGCore::Scene> m_worldScene;

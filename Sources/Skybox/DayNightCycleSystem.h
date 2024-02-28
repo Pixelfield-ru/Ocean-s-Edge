@@ -18,7 +18,7 @@ namespace OceansEdge
     {
         float m_cycleSpeed = 0.01f;
         
-        void fixedUpdate() noexcept final;
+        void fixedUpdate(const double& dt, const double& fixedDt) noexcept final;
     };
 }
 

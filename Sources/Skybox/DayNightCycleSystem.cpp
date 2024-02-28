@@ -7,7 +7,7 @@
 #include <SGCore/Scene/Scene.h>
 #include <SGCore/Render/Atmosphere/Atmosphere.h>
 
-void OceansEdge::DayNightCycleSystem::fixedUpdate() noexcept
+void OceansEdge::DayNightCycleSystem::fixedUpdate(const double& dt, const double& fixedDt) noexcept
 {
     auto lockedScene = m_scene.lock();
     if(!lockedScene) return;

@@ -44,9 +44,11 @@
          ${SUNGEAR_DIR}/Externals/fmt/include
  )
 
- set(SG_RESOURCES_COPY_MODELS ON)
+ set(SG_RESOURCES_COPY_MODELS OFF)
  set(SG_RESOURCES_COPY_SHADERS ON)
- set(SG_RESOURCES_COPY_TEXTURES ON)
+ set(SG_RESOURCES_COPY_TEXTURES OFF)
+ set(SG_RESOURCES_COPY_UI ON)
+ set(SG_RESOURCES_COPY_FONTS ON)
 
  add_subdirectory(${SUNGEAR_DIR}/Externals Externals)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
@@ -90,6 +92,14 @@
              COMMENT "Copying SGShaders into binary directory")
 
      add_dependencies(${PROJECT_NAME} SGShadersCopy)
+
+     add_custom_target(OEShadersCopy ALL
+             COMMAND ${CMAKE_COMMAND} -E copy_directory
+             ${CMAKE_SOURCE_DIR}/Resources/OEResources/shaders
+             ${CMAKE_BINARY_DIR}/OEResources/shaders
+             COMMENT "Copying OEShaders into binary directory")
+
+     add_dependencies(${PROJECT_NAME} OEShadersCopy)
  endif ()
 
  if (${SG_RESOURCES_COPY_TEXTURES})
@@ -108,4 +118,44 @@
              COMMENT "Copying OETextures into binary directory")
 
      add_dependencies(${PROJECT_NAME} OETexturesCopy)
+ endif ()
+
+ if (${SG_RESOURCES_COPY_UI})
+     add_custom_target(SGUICopy ALL
+             COMMAND ${CMAKE_COMMAND} -E copy_directory
+             ${SUNGEAR_DIR}/Resources/SGResources/ui
+             ${CMAKE_BINARY_DIR}/SGResources/ui
+             COMMENT "Copying SGUI into binary directory")
+
+     add_dependencies(${PROJECT_NAME} SGUICopy)
+
+     if(EXISTS ${CMAKE_SOURCE_DIR}/Resources/OEResources/ui)
+         add_custom_target(OEUICopy ALL
+                 COMMAND ${CMAKE_COMMAND} -E copy_directory
+                 ${CMAKE_SOURCE_DIR}/Resources/OEResources/ui
+                 ${CMAKE_BINARY_DIR}/OEResources/ui
+                 COMMENT "Copying OEUI into binary directory")
+
+         add_dependencies(${PROJECT_NAME} OEUICopy)
+     endif()
+ endif ()
+
+ if (${SG_RESOURCES_COPY_FONTS})
+     add_custom_target(SGFontsCopy ALL
+             COMMAND ${CMAKE_COMMAND} -E copy_directory
+             ${SUNGEAR_DIR}/Resources/SGResources/fonts
+             ${CMAKE_BINARY_DIR}/SGResources/fonts
+             COMMENT "Copying SGFonts into binary directory")
+
+     add_dependencies(${PROJECT_NAME} SGFontsCopy)
+
+     if(EXISTS ${CMAKE_SOURCE_DIR}/Resources/OEResources/fonts)
+         add_custom_target(OEFontsCopy ALL
+                 COMMAND ${CMAKE_COMMAND} -E copy_directory
+                 ${CMAKE_SOURCE_DIR}/Resources/OEResources/fonts
+                 ${CMAKE_BINARY_DIR}/OEResources/fonts
+                 COMMENT "Copying SGFonts into binary directory")
+
+         add_dependencies(${PROJECT_NAME} OEFontsCopy)
+     endif ()
  endif ()
