@@ -252,8 +252,10 @@ void OceansEdge::GameMain::init()
         std::cout << "perlin generated" << std::endl;
         
         entt::entity blocksInstancingEntity = m_worldScene->getECSRegistry().create();
-        SGCore::Instancing& blocksInstancing = m_worldScene->getECSRegistry().emplace<SGCore::Instancing>(blocksInstancingEntity);
+        SGCore::Instancing& blocksInstancing = m_worldScene->getECSRegistry().emplace<SGCore::Instancing>(blocksInstancingEntity, 200'000);
         blocksInstancing.setExampleMeshData(BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS).m_meshData);
+        // blocksInstancing.setIsNonInstancingSingleDrawCall(true);
+        std::cout << "ugu" << std::endl;
         blocksInstancing.fillArraysByExample();
         blocksInstancing.updateBuffersEntirely();
         blocksInstancing.m_updateIndices = false;
