@@ -39,6 +39,7 @@
 #include <SGCore/Main/CoreSettings.h>
 #include <SGCore/Render/DisableMeshGeometryPass.h>
 #include <SGCore/Render/Instancing/Instancing.h>
+#include <SGCore/Render/Batching/Batch.h>
 
 #include "GameMain.h"
 #include "Skybox/DayNightCycleSystem.h"
@@ -245,22 +246,24 @@ void OceansEdge::GameMain::init()
     {
         SGCore::PerlinNoise perlinNoise;
         perlinNoise.setSeed(10);
-        perlinNoise.generateMap({ 400, 400 });
+        perlinNoise.generateMap({ 200, 200 });
         
         auto perlinMapSize = perlinNoise.getCurrentMapSize();
         
         std::cout << "perlin generated" << std::endl;
         
-        entt::entity blocksInstancingEntity = m_worldScene->getECSRegistry().create();
+        /*entt::entity blocksInstancingEntity = m_worldScene->getECSRegistry().create();
         SGCore::Instancing& blocksInstancing = m_worldScene->getECSRegistry().emplace<SGCore::Instancing>(blocksInstancingEntity, 200'000);
         blocksInstancing.setExampleMeshData(BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS).m_meshData);
-        // blocksInstancing.setIsNonInstancingSingleDrawCall(true);
         std::cout << "ugu" << std::endl;
         blocksInstancing.fillArraysByExample();
         blocksInstancing.updateBuffersEntirely();
         blocksInstancing.m_updateIndices = false;
         blocksInstancing.m_updateUVs = false;
-        blocksInstancing.m_updatePositions = false;
+        blocksInstancing.m_updatePositions = false;*/
+        
+        entt::entity blocksBatchingEntity = m_worldScene->getECSRegistry().create();
+        SGCore::Batch& blocksBatch = m_worldScene->getECSRegistry().emplace<SGCore::Batch>(blocksBatchingEntity, m_worldScene);
         
         for(int x = 0; x < perlinMapSize.x; ++x)
         {
@@ -272,13 +275,16 @@ void OceansEdge::GameMain::init()
                     entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS).m_meshData->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME);
                     m_worldScene->getECSRegistry().emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
                     
-                    blocksInstancing.m_entitiesToRender.push_back(blockEntity);
+                    blocksBatch.addEntity(blockEntity);
+                    // blocksInstancing.m_entitiesToRender.push_back(blockEntity);
                     
                     SGCore::Transform* blockTransform = m_worldScene->getECSRegistry().try_get<SGCore::Transform>(
                             blockEntity);
                     blockTransform->m_ownTransform.m_position.x = (float) x * 2;
                     blockTransform->m_ownTransform.m_position.y = (float) z * 2;
                     blockTransform->m_ownTransform.m_position.z = (float) y * 2;
+                    
+                    // m_worldScene->getECSRegistry().patch<SGCore::Transform>(blockEntity);
                 }
             }
         }
