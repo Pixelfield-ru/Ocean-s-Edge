@@ -1,31 +1,46 @@
- cmake_minimum_required(VERSION 3.22)
+ cmake_minimum_required(VERSION 3.5)
 
  project(OceansEdgeBuild)
 
- add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
- add_definitions(-DSTB_IMAGE_WRITE_IMPLEMENTATION)
+#[[ add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
+ add_definitions(-DSTB_IMAGE_WRITE_IMPLEMENTATION)]]
 
  set(CMAKE_CXX_STANDARD 23)
 
  set(CMAKE_VERBOSE_MAKEFILE ON)
 
- add_compile_options(-fPIC)
+ IF(NOT MSVC)
+     add_compile_options(-fPIC)
+     set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-implicit-fallthrough -Wno-ignored-qualifiers")
+     set(CMAKE_CXX_FLAGS_DEBUG "-O1")
+     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+ else()
+     add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
- set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-implicit-fallthrough -Wno-ignored-qualifiers")
- set(CMAKE_CXX_FLAGS_DEBUG "-O1")
- set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+     set(CompilerFlags
+             CMAKE_CXX_FLAGS
+             CMAKE_CXX_FLAGS_DEBUG
+             CMAKE_CXX_FLAGS_RELEASE
+             CMAKE_C_FLAGS
+             CMAKE_C_FLAGS_DEBUG
+             CMAKE_C_FLAGS_RELEASE
+     )
+     foreach(CompilerFlag ${CompilerFlags})
+         string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
+     endforeach()
 
- if(MSVC)
      set(MSVC_RUNTIME "dynamic")
      set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-     set(BUILD_SHARED_LIBS TRUE)
- endif()
+     set(BUILD_SHARED_LIBS FALSE)
+ endif ()
 
  set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-allow-multiple-definition -Wno-return-type")
 
  file(GLOB_RECURSE OCEANS_EDGE_SOURCES ../Sources/*.cpp ../Sources/*.h)
 
- set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
+ # set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
+ set(SUNGEAR_DIR "D:/Pixelfield/NativeSungearEngine/NativeSungearEngine")
 
  include_directories(${PROJECT_NAME} PUBLIC
          ${SUNGEAR_DIR}/Externals
@@ -45,10 +60,10 @@
  )
 
  set(SG_RESOURCES_COPY_MODELS OFF)
- set(SG_RESOURCES_COPY_SHADERS ON)
+ set(SG_RESOURCES_COPY_SHADERS OFF)
  set(SG_RESOURCES_COPY_TEXTURES OFF)
- set(SG_RESOURCES_COPY_UI ON)
- set(SG_RESOURCES_COPY_FONTS ON)
+ set(SG_RESOURCES_COPY_UI OFF)
+ set(SG_RESOURCES_COPY_FONTS OFF)
 
  add_subdirectory(${SUNGEAR_DIR}/Externals Externals)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
@@ -59,7 +74,7 @@
 
  add_executable(${PROJECT_NAME} ${OCEANS_EDGE_SOURCES})
 
- target_link_libraries(${PROJECT_NAME} PRIVATE
+ target_link_libraries(${PROJECT_NAME} PUBLIC
          ${BULLET_COLLISION_LIBRARY}
          ${BULLET_DYNAMICS_LIBRARY}
          ${BULLET_MATH_LIBRARY}
@@ -93,13 +108,15 @@
 
      add_dependencies(${PROJECT_NAME} SGShadersCopy)
 
-     add_custom_target(OEShadersCopy ALL
-             COMMAND ${CMAKE_COMMAND} -E copy_directory
-             ${CMAKE_SOURCE_DIR}/Resources/OEResources/shaders
-             ${CMAKE_BINARY_DIR}/OEResources/shaders
-             COMMENT "Copying OEShaders into binary directory")
+     if(EXISTS ${CMAKE_SOURCE_DIR}/Resources/OEResources/shaders)
+         add_custom_target(OEShadersCopy ALL
+                 COMMAND ${CMAKE_COMMAND} -E copy_directory
+                 ${CMAKE_SOURCE_DIR}/Resources/OEResources/shaders
+                 ${CMAKE_BINARY_DIR}/OEResources/shaders
+                 COMMENT "Copying OEShaders into binary directory")
 
-     add_dependencies(${PROJECT_NAME} OEShadersCopy)
+         add_dependencies(${PROJECT_NAME} OEShadersCopy)
+     endif()
  endif ()
 
  if (${SG_RESOURCES_COPY_TEXTURES})

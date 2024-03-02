@@ -246,7 +246,7 @@ void OceansEdge::GameMain::init()
     {
         SGCore::PerlinNoise perlinNoise;
         perlinNoise.setSeed(10);
-        perlinNoise.generateMap({ 200, 200 });
+        perlinNoise.generateMap({ 400, 400 });
         
         auto perlinMapSize = perlinNoise.getCurrentMapSize();
         
@@ -264,35 +264,45 @@ void OceansEdge::GameMain::init()
         
         entt::entity blocksBatchingEntity = m_worldScene->getECSRegistry().create();
         SGCore::Batch& blocksBatch = m_worldScene->getECSRegistry().emplace<SGCore::Batch>(blocksBatchingEntity, m_worldScene);
-        
-        for(int x = 0; x < perlinMapSize.x; ++x)
+
+        try
         {
-            for(int y = 0; y < perlinMapSize.y; ++y)
+            for(int x = 0; x < perlinMapSize.x; ++x)
             {
-                float z = perlinNoise.m_map.get(x, y);
-                
+                for(int y = 0; y < perlinMapSize.y; ++y)
                 {
-                    entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS).m_meshData->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME);
-                    m_worldScene->getECSRegistry().emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
-                    
-                    blocksBatch.addEntity(blockEntity);
-                    // blocksInstancing.m_entitiesToRender.push_back(blockEntity);
-                    
-                    SGCore::Transform* blockTransform = m_worldScene->getECSRegistry().try_get<SGCore::Transform>(
-                            blockEntity);
-                    blockTransform->m_ownTransform.m_position.x = (float) x * 2;
-                    blockTransform->m_ownTransform.m_position.y = (float) z * 2;
-                    blockTransform->m_ownTransform.m_position.z = (float) y * 2;
-                    
-                    // m_worldScene->getECSRegistry().patch<SGCore::Transform>(blockEntity);
+                    float z = perlinNoise.m_map.get(x, y);
+
+                    {
+                        entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS
+                        ).m_meshData->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME);
+                        m_worldScene->getECSRegistry().emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
+
+                        blocksBatch.addEntity(blockEntity);
+                        // blocksInstancing.m_entitiesToRender.push_back(blockEntity);
+
+                        SGCore::Transform* blockTransform = m_worldScene->getECSRegistry().try_get<SGCore::Transform>(
+                                blockEntity
+                        );
+                        blockTransform->m_ownTransform.m_position.x = (float) x * 2;
+                        blockTransform->m_ownTransform.m_position.y = (float) z * 2;
+                        blockTransform->m_ownTransform.m_position.z = (float) y * 2;
+
+                        // m_worldScene->getECSRegistry().patch<SGCore::Transform>(blockEntity);
+                    }
                 }
             }
+
+            std::cout << "blocks instancing created" << std::endl;
+
+            stbi_write_png("perlin_noise_test.png", perlinMapSize.x, perlinMapSize.y, 4,
+                           (perlinNoise.m_map.data()), 4 * perlinMapSize.x
+            );
         }
-        
-        std::cout << "blocks instancing created" << std::endl;
-        
-        stbi_write_png("perlin_noise_test.png", perlinMapSize.x, perlinMapSize.y, 4,
-                       (perlinNoise.m_map.data()), 4 * perlinMapSize.x);
+        catch(const std::exception& e)
+        {
+            spdlog::error("FATAL ERROR: {0}", e.what());
+        }
     }
     
     // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
