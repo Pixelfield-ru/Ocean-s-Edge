@@ -18,7 +18,7 @@ namespace OceansEdge
     {
         static void init();
         static void fixedUpdate(const double& dt, const double& fixedDt);
-        static void update(const double& dt);
+        static void update(const double& dt, const double& fixedDt);
         
     private:
         static inline SGCore::Ref<SGCore::Scene> m_worldScene;

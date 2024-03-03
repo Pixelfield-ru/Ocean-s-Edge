@@ -7,6 +7,8 @@
      add_definitions(-DSTB_IMAGE_WRITE_IMPLEMENTATION)
  ENDIF()
 
+ add_definitions(-DENTT_USE_ATOMIC)
+
  set(CMAKE_CXX_STANDARD 23)
 
  set(CMAKE_VERBOSE_MAKEFILE ON)

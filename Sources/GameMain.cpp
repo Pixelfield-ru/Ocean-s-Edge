@@ -143,7 +143,7 @@ void OceansEdge::GameMain::init()
     SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
     
-    SGCore::Transform& cameraTransform = m_worldScene->getECSRegistry().emplace<SGCore::Transform>(testCameraEntity);
+    auto cameraTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity);
     
     SGCore::Camera3D& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Camera3D>(testCameraEntity);
     SGCore::Controllable3D& cameraEntityControllable = m_worldScene->getECSRegistry().emplace<SGCore::Controllable3D>(testCameraEntity);
@@ -171,10 +171,10 @@ void OceansEdge::GameMain::init()
         SGCore::ShadersUtils::loadShader(shaderComponent, "SkyboxShader");
         skyboxMesh.m_base.m_meshDataRenderInfo.m_enableFacesCulling = false;
         
-        SGCore::Transform& skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Transform>(skyboxEntities[2]);
+        auto skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(skyboxEntities[2]);
         // auto transformComponent = skyboxEntities[2]->getComponent<SGCore::Transform>();
         
-        skyboxTransform.m_ownTransform.m_scale = { 1150, 1150, 1150 };
+        skyboxTransform->m_ownTransform.m_scale = { 1150, 1150, 1150 };
     }
     
     // -----------------------------------------------------------
@@ -182,7 +182,7 @@ void OceansEdge::GameMain::init()
     {
         entt::entity uiCameraEntity = m_worldScene->getECSRegistry().create();
         SGCore::UICamera& uiCameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::UICamera>(uiCameraEntity);
-        SGCore::Transform& uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Transform>(uiCameraEntity);
+        auto uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity);
         SGCore::RenderingBase& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::RenderingBase>(uiCameraEntity);
         
         uiCameraEntityRenderingBase.m_left = 0;
@@ -221,9 +221,9 @@ void OceansEdge::GameMain::init()
         
         entt::entity textEntity = m_worldScene->getECSRegistry().create();
         SGCore::Text& helloWorldUIText = m_worldScene->getECSRegistry().emplace<SGCore::Text>(textEntity);
-        SGCore::Transform& helloWorldUITextTransform = m_worldScene->getECSRegistry().emplace<SGCore::Transform>(textEntity);
-        helloWorldUITextTransform.m_ownTransform.m_scale = { 1.0, 1.0, 1 };
-        helloWorldUITextTransform.m_ownTransform.m_position = { 0.0, -50.0, 0 };
+        auto helloWorldUITextTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(textEntity);
+        helloWorldUITextTransform->m_ownTransform.m_scale = { 1.0, 1.0, 1 };
+        helloWorldUITextTransform->m_ownTransform.m_position = { 0.0, -50.0, 0 };
         
         std::string formattedVersion = spdlog::fmt_lib::format("{0}.{1}.{2}.{3}", SG_CORE_MAJOR_VERSION, SG_CORE_MINOR_VERSION, SG_CORE_PATCH_VERSION, SG_CORE_BUILD_VERSION);
         helloWorldUIText.m_text = std::u16string(u"Development build. v") +
@@ -273,7 +273,7 @@ void OceansEdge::GameMain::init()
                         blocksBatch.addEntity(blockEntity);
                         // blocksInstancing.m_entitiesToRender.push_back(blockEntity);
 
-                        SGCore::Transform* blockTransform = m_worldScene->getECSRegistry().try_get<SGCore::Transform>(
+                        auto blockTransform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(
                                 blockEntity
                         );
                         blockTransform->m_ownTransform.m_position.x = (float) x * 2;
@@ -318,7 +318,7 @@ void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
     SGCore::Scene::getCurrentScene()->fixedUpdate(dt, fixedDt);
 }
 
-void OceansEdge::GameMain::update(const double& dt)
+void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 {
     SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
     
@@ -370,7 +370,7 @@ void OceansEdge::GameMain::update(const double& dt)
     }
     ImGui::End();
     
-    SGCore::Scene::getCurrentScene()->update(dt);
+    SGCore::Scene::getCurrentScene()->update(dt, fixedDt);
     
     SGCore::ImGuiWrap::ImGuiLayer::endFrame();
 }
