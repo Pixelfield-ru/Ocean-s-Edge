@@ -143,7 +143,7 @@ void OceansEdge::GameMain::init()
     SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
     
-    auto cameraTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity);
+    auto cameraTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
     
     SGCore::Camera3D& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Camera3D>(testCameraEntity);
     SGCore::Controllable3D& cameraEntityControllable = m_worldScene->getECSRegistry().emplace<SGCore::Controllable3D>(testCameraEntity);
@@ -182,7 +182,7 @@ void OceansEdge::GameMain::init()
     {
         entt::entity uiCameraEntity = m_worldScene->getECSRegistry().create();
         SGCore::UICamera& uiCameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::UICamera>(uiCameraEntity);
-        auto uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity);
+        auto uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity, SGCore::MakeRef<SGCore::Transform>());
         SGCore::RenderingBase& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::RenderingBase>(uiCameraEntity);
         
         uiCameraEntityRenderingBase.m_left = 0;
@@ -221,7 +221,7 @@ void OceansEdge::GameMain::init()
         
         entt::entity textEntity = m_worldScene->getECSRegistry().create();
         SGCore::Text& helloWorldUIText = m_worldScene->getECSRegistry().emplace<SGCore::Text>(textEntity);
-        auto helloWorldUITextTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(textEntity);
+        auto helloWorldUITextTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(textEntity, SGCore::MakeRef<SGCore::Transform>());
         helloWorldUITextTransform->m_ownTransform.m_scale = { 1.0, 1.0, 1 };
         helloWorldUITextTransform->m_ownTransform.m_position = { 0.0, -50.0, 0 };
         
