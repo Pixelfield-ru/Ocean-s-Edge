@@ -22,15 +22,7 @@
 #include <stb_image_write.h>
 #include <SGCore/Render/PBRRP/PBRRenderPipeline.h>
 
-#include <BulletCollision/CollisionDispatch/btCollisionConfiguration.h>
-#include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
 #include <BulletCollision/BroadphaseCollision/btDispatcher.h>
-#include <BulletCollision/CollisionDispatch/btCollisionDispatcher.h>
-#include <BulletCollision/BroadphaseCollision/btBroadphaseInterface.h>
-#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
-#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
-#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include <LinearMath/btIDebugDraw.h>
 #include <SGCore/Render/Camera3D.h>
 #include <SGCore/Render/UICamera.h>
 #include <SGCore/Memory/Assets/Font.h>
@@ -38,8 +30,8 @@
 #include <SGCore/UI/Text.h>
 #include <SGCore/Main/CoreSettings.h>
 #include <SGCore/Render/DisableMeshGeometryPass.h>
-#include <SGCore/Render/Instancing/Instancing.h>
 #include <SGCore/Render/Batching/Batch.h>
+#include <SGCore/Render/ShaderComponent.h>
 
 #include "GameMain.h"
 #include "Skybox/DayNightCycleSystem.h"
@@ -168,6 +160,7 @@ void OceansEdge::GameMain::init()
         });
         
         SGCore::Mesh& skyboxMesh = m_worldScene->getECSRegistry().get<SGCore::Mesh>(skyboxEntities[2]);
+        SGCore::ShaderComponent& shaderComponent = m_worldScene->getECSRegistry().emplace<SGCore::ShaderComponent>(skyboxEntities[2]);
         SGCore::Atmosphere& atmosphereScattering = m_worldScene->getECSRegistry().emplace<SGCore::Atmosphere>(skyboxEntities[2]);
         // atmosphereScattering.m_sunRotation.z = 90.0;
         /*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
@@ -175,8 +168,7 @@ void OceansEdge::GameMain::init()
         );*/
         
         //skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
-        skyboxMesh.m_base.m_meshData->m_material->setShader(SGCore::MakeRef<SGCore::IShader>());
-        SGCore::MeshesUtils::loadMeshShader(skyboxMesh.m_base, "SkyboxShader");
+        SGCore::ShadersUtils::loadShader(shaderComponent, "SkyboxShader");
         skyboxMesh.m_base.m_meshDataRenderInfo.m_enableFacesCulling = false;
         
         SGCore::Transform& skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Transform>(skyboxEntities[2]);
@@ -246,7 +238,7 @@ void OceansEdge::GameMain::init()
     {
         SGCore::PerlinNoise perlinNoise;
         perlinNoise.setSeed(10);
-        perlinNoise.generateMap({ 400, 400 });
+        perlinNoise.generateMap({ 1000, 1000 });
         
         auto perlinMapSize = perlinNoise.getCurrentMapSize();
         
