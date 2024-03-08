@@ -238,7 +238,7 @@ void OceansEdge::GameMain::init()
     {
         SGCore::PerlinNoise perlinNoise;
         perlinNoise.setSeed(10);
-        perlinNoise.generateMap({ 300, 300 });
+        perlinNoise.generateMap({ 1000, 1000 });
         
         auto perlinMapSize = perlinNoise.getCurrentMapSize();
         
@@ -257,8 +257,8 @@ void OceansEdge::GameMain::init()
         entt::entity blocksBatchingEntity = m_worldScene->getECSRegistry().create();
         SGCore::Batch& blocksBatch = m_worldScene->getECSRegistry().emplace<SGCore::Batch>(blocksBatchingEntity,
                                                                                            m_worldScene,
-                                                                                           1024 * 1024 * 12,
-                                                                                           300'000);
+                                                                                           1024 * 1024 * 25,
+                                                                                           1'000'000);
 
         try
         {
