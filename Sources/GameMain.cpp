@@ -238,7 +238,8 @@ void OceansEdge::GameMain::init()
     {
         SGCore::PerlinNoise perlinNoise;
         perlinNoise.setSeed(10);
-        perlinNoise.generateMap({ 1000, 1000 });
+        // perlinNoise.generateMapMultiOctave({ 1000, 1000 }, 1, 1.0f);
+        perlinNoise.generate({ 1000, 1000 }, 6, 0.6f);
         
         auto perlinMapSize = perlinNoise.getCurrentMapSize();
         
@@ -262,11 +263,16 @@ void OceansEdge::GameMain::init()
 
         try
         {
+            float curZ = 0;
+            
             for(int x = 0; x < perlinMapSize.x; ++x)
             {
                 for(int y = 0; y < perlinMapSize.y; ++y)
                 {
                     float z = perlinNoise.m_map.get(x, y);
+                    // curZ += z * 2.0f;
+                    
+                    // std::cout << z << std::endl;
 
                     {
                         entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS
@@ -280,7 +286,7 @@ void OceansEdge::GameMain::init()
                                 blockEntity
                         );
                         blockTransform->m_ownTransform.m_position.x = (float) x * 2;
-                        blockTransform->m_ownTransform.m_position.y = (float) z * 2;
+                        blockTransform->m_ownTransform.m_position.y = z * 500.0f;
                         blockTransform->m_ownTransform.m_position.z = (float) y * 2;
 
                         // m_worldScene->getECSRegistry().patch<SGCore::Transform>(blockEntity);
