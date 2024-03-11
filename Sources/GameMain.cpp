@@ -32,6 +32,9 @@
 #include <SGCore/Render/DisableMeshGeometryPass.h>
 #include <SGCore/Render/Batching/Batch.h>
 #include <SGCore/Render/ShaderComponent.h>
+#include <SGCore/Render/SpacePartitioning/CullableInfo.h>
+#include <SGCore/Render/SpacePartitioning/CullableMesh.h>
+#include <SGCore/Render/SpacePartitioning/IgnoreOctrees.h>
 
 #include "GameMain.h"
 #include "Skybox/DayNightCycleSystem.h"
@@ -145,9 +148,11 @@ void OceansEdge::GameMain::init()
     
     auto cameraTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
     
-    SGCore::Camera3D& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Camera3D>(testCameraEntity);
+    auto& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Camera3D>>(testCameraEntity,
+            SGCore::MakeRef<SGCore::Camera3D>());
     SGCore::Controllable3D& cameraEntityControllable = m_worldScene->getECSRegistry().emplace<SGCore::Controllable3D>(testCameraEntity);
-    SGCore::RenderingBase& cameraRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::RenderingBase>(testCameraEntity);
+    auto& cameraRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::RenderingBase>>(testCameraEntity,
+                                                                                                           SGCore::MakeRef<SGCore::RenderingBase>());
     
     // -----------------------------------------------------------
     
@@ -162,6 +167,7 @@ void OceansEdge::GameMain::init()
         SGCore::Mesh& skyboxMesh = m_worldScene->getECSRegistry().get<SGCore::Mesh>(skyboxEntities[2]);
         SGCore::ShaderComponent& shaderComponent = m_worldScene->getECSRegistry().emplace<SGCore::ShaderComponent>(skyboxEntities[2]);
         SGCore::Atmosphere& atmosphereScattering = m_worldScene->getECSRegistry().emplace<SGCore::Atmosphere>(skyboxEntities[2]);
+        auto& atmosphereIgnoreOctrees = m_worldScene->getECSRegistry().emplace<SGCore::IgnoreOctrees>(skyboxEntities[2]);
         // atmosphereScattering.m_sunRotation.z = 90.0;
         /*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
                                                                standardCubemap
@@ -183,12 +189,13 @@ void OceansEdge::GameMain::init()
         entt::entity uiCameraEntity = m_worldScene->getECSRegistry().create();
         SGCore::UICamera& uiCameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::UICamera>(uiCameraEntity);
         auto uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity, SGCore::MakeRef<SGCore::Transform>());
-        SGCore::RenderingBase& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::RenderingBase>(uiCameraEntity);
+        auto& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::RenderingBase>>(uiCameraEntity,
+                SGCore::MakeRef<SGCore::RenderingBase>());
         
-        uiCameraEntityRenderingBase.m_left = 0;
-        uiCameraEntityRenderingBase.m_right = 2560;
-        uiCameraEntityRenderingBase.m_bottom = -1440;
-        uiCameraEntityRenderingBase.m_top = 0;
+        uiCameraEntityRenderingBase->m_left = 0;
+        uiCameraEntityRenderingBase->m_right = 2560;
+        uiCameraEntityRenderingBase->m_bottom = -1440;
+        uiCameraEntityRenderingBase->m_top = 0;
     }
     
     // UI =================================================
@@ -237,9 +244,9 @@ void OceansEdge::GameMain::init()
     
     {
         SGCore::PerlinNoise perlinNoise;
-        perlinNoise.setSeed(10);
+        // perlinNoise.setSeed(10);
         // perlinNoise.generateMapMultiOctave({ 1000, 1000 }, 1, 1.0f);
-        perlinNoise.generate({ 1000, 1000 }, 6, 0.6f);
+        perlinNoise.generate({ 300, 300 }, 6, 0.6f);
         
         auto perlinMapSize = perlinNoise.getCurrentMapSize();
         
@@ -258,8 +265,8 @@ void OceansEdge::GameMain::init()
         entt::entity blocksBatchingEntity = m_worldScene->getECSRegistry().create();
         SGCore::Batch& blocksBatch = m_worldScene->getECSRegistry().emplace<SGCore::Batch>(blocksBatchingEntity,
                                                                                            m_worldScene,
-                                                                                           1024 * 1024 * 25,
-                                                                                           1'000'000);
+                                                                                           1024 * 1024 * 6,
+                                                                                           250'000);
 
         try
         {
@@ -278,6 +285,8 @@ void OceansEdge::GameMain::init()
                         entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS
                         ).m_meshData->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME);
                         m_worldScene->getECSRegistry().emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
+                        m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::CullableInfo>>(blockEntity);
+                        m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);
 
                         blocksBatch.addEntity(blockEntity);
                         // blocksInstancing.m_entitiesToRender.push_back(blockEntity);
@@ -286,7 +295,7 @@ void OceansEdge::GameMain::init()
                                 blockEntity
                         );
                         blockTransform->m_ownTransform.m_position.x = (float) x * 2;
-                        blockTransform->m_ownTransform.m_position.y = z * 500.0f;
+                        blockTransform->m_ownTransform.m_position.y = z * 50.0f;
                         blockTransform->m_ownTransform.m_position.z = (float) y * 2;
 
                         // m_worldScene->getECSRegistry().patch<SGCore::Transform>(blockEntity);
