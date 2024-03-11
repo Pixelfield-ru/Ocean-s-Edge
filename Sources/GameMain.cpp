@@ -32,7 +32,7 @@
 #include <SGCore/Render/DisableMeshGeometryPass.h>
 #include <SGCore/Render/Batching/Batch.h>
 #include <SGCore/Render/ShaderComponent.h>
-#include <SGCore/Render/SpacePartitioning/CullableInfo.h>
+#include <SGCore/Render/SpacePartitioning/OctreeCullableInfo.h>
 #include <SGCore/Render/SpacePartitioning/CullableMesh.h>
 #include <SGCore/Render/SpacePartitioning/IgnoreOctrees.h>
 
