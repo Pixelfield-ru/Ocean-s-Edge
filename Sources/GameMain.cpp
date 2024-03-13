@@ -285,7 +285,7 @@ void OceansEdge::GameMain::init()
                         entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS
                         ).m_meshData->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME);
                         m_worldScene->getECSRegistry().emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
-                        m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::CullableInfo>>(blockEntity);
+                        m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
                         m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);
 
                         blocksBatch.addEntity(blockEntity);
@@ -344,8 +344,10 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
     
     ImGui::Begin("ECS Systems Stats");
     {
-        if(ImGui::BeginTable("SystemsStats", 3))
+        if(ImGui::BeginTable("SystemsStats", 5))
         {
+            // ImGui::Columns(5, "Columns", true);
+            
             ImGui::TableNextColumn();
             ImGui::Text("System");
             ImGui::TableNextColumn();
@@ -353,21 +355,33 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
             ImGui::TableNextColumn();
             ImGui::Text("fixedUpdate");
             ImGui::TableNextColumn();
+            ImGui::Text("parallelUpdate");
+            ImGui::TableNextColumn();
+            ImGui::Text("Thread ID");
             
             for(const auto& system : SGCore::Scene::getCurrentScene()->getAllSystems())
             {
+                ImGui::TableNextColumn();
                 std::string systemName = std::string(typeid(*(system)).name());
                 ImGui::Text(systemName.c_str());
                 
                 ImGui::TableNextColumn();
                 
-                ImGui::Text((std::to_string(system->getUpdateFunctionExecutionTime()) + " ms").c_str());
+                ImGui::Text((std::to_string(system->m_executionTimes["update"]) + " ms").c_str());
                 
                 ImGui::TableNextColumn();
                 
-                ImGui::Text((std::to_string(system->getFixedUpdateFunctionExecutionTime()) + " ms").c_str());
+                ImGui::Text((std::to_string(system->m_executionTimes["fixedUpdate"]) + " ms").c_str());
                 
                 ImGui::TableNextColumn();
+                
+                ImGui::Text((std::to_string(system->m_executionTimes["parallelUpdate"]) + " ms").c_str());
+                
+                ImGui::TableNextColumn();
+                
+                ImGui::Text(std::to_string(system->getThreadID()).c_str());
+                
+                //SGCore::Ref<SGCore::IP
             }
             
             ImGui::EndTable();
