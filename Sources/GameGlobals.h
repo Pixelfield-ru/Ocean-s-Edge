@@ -16,10 +16,13 @@ namespace OceansEdge
     using uvec2 = glm::vec<2, unsigned int, glm::defaultp>;
     using ulvec2 = glm::vec<2, size_t, glm::defaultp>;
     
+    using lvec3 = glm::vec<3, long, glm::defaultp>;
+    using lvec2 = glm::vec<2, long, glm::defaultp>;
+    
     namespace Settings
     {
-        static inline size_t s_drawingRange = 10;
-        static inline ulvec3 s_chunksSize { 32, 256, 32 };
+        static inline long s_drawingRange = 10;
+        static inline lvec3 s_chunksSize { 64, 256, 64 };
     }
 }
 

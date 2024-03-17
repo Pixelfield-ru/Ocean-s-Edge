@@ -41,8 +41,10 @@
 #include "BlocksTypes.h"
 #include "Atlas.h"
 #include "ChunksManager.h"
+#include "Player.h"
 
 SGCore::Ref<SGCore::Transform> chunk0Transform;
+SGCore::Ref<SGCore::Transform> playerTransform;
 
 void OceansEdge::GameMain::init()
 {
@@ -150,8 +152,9 @@ void OceansEdge::GameMain::init()
     entt::entity testCameraEntity = m_worldScene->getECSRegistry().create();
     SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
+    m_worldScene->getECSRegistry().emplace<Player>(testCameraEntity);
     
-    auto cameraTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
+    playerTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
     
     auto& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Camera3D>>(testCameraEntity,
             SGCore::MakeRef<SGCore::Camera3D>());
@@ -267,9 +270,8 @@ void OceansEdge::GameMain::init()
         blocksInstancing.m_updateUVs = false;
         blocksInstancing.m_updatePositions = false;*/
         
-        ChunksManager::buildChunksGrid(m_worldScene, glm::vec3 { 0, 0, 0 }, 0);
-        
         // chunk0Transform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(ChunksManager::getChunks()[0]);
+        ChunksManager::prepareGrid(m_worldScene);
     }
     
     // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
@@ -297,6 +299,10 @@ void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
 
 void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 {
+    // std::cout << playerTransform->m_ownTransform.m_position.x << std::endl;
+    
+    ChunksManager::buildChunksGrid(m_worldScene, playerTransform->m_ownTransform.m_position, 0);
+    
     SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
     
     SGCore::ImGuiWrap::ImGuiLayer::beginFrame();

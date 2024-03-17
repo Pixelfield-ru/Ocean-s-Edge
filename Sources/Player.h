@@ -9,7 +9,8 @@ namespace OceansEdge
 {
     struct Player
     {
-    
+    private:
+        bool m_dummy = false;
     };
 }
 

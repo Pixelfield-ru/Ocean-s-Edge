@@ -13,61 +13,194 @@
 #include <SGCore/Scene/EntityBaseInfo.h>
 #include "ChunksManager.h"
 #include "BlocksTypes.h"
+#include "Chunk.h"
+
+void OceansEdge::ChunksManager::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept
+{
+    auto& registry = scene->getECSRegistry();
+    
+    const size_t totalSurfaceBlocksInChunkCnt = Settings::s_chunksSize.x * Settings::s_chunksSize.z * 2;
+    
+    m_chunksEntities.resize(Settings::s_drawingRange * Settings::s_drawingRange);
+    
+    size_t curChunk = 0;
+    for(long x = -Settings::s_drawingRange / 2; x < +Settings::s_drawingRange / 2; ++x)
+    {
+        for(long y = -Settings::s_drawingRange / 2; y < +Settings::s_drawingRange / 2; ++y)
+        {
+            entt::entity chunkEntity = registry.create();
+            
+            auto& chunkBatch = registry.emplace<SGCore::Batch>(chunkEntity, scene,
+                                                               totalSurfaceBlocksInChunkCnt * 36,
+                                                               totalSurfaceBlocksInChunkCnt);
+            
+            auto chunkTransform = registry.emplace<SGCore::Ref<SGCore::Transform>>(chunkEntity,
+                                                                                   SGCore::MakeRef<SGCore::Transform>());
+            auto& chunkEntityChunk = registry.emplace<Chunk>(chunkEntity);
+            
+            for(std::uint32_t bx = 0; bx < Settings::s_chunksSize.x; ++bx)
+            {
+                for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
+                {
+                    auto blockEntity = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS)
+                            .m_meshData->addOnScene(scene, SG_LAYER_OPAQUE_NAME);
+                    registry.emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
+                    registry.remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
+                    registry.remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);
+                    
+                    chunkEntityChunk.m_blocks[{ bx, bz }] = blockEntity;
+                    
+                    chunkBatch.addEntity(blockEntity);
+                    
+                    SGCore::EntityBaseInfo& blockEntityBaseInfo = registry.get<SGCore::EntityBaseInfo>(blockEntity);
+                    blockEntityBaseInfo.m_parent = chunkEntity;
+                }
+            }
+            
+            // m_chunksEntities[curChunk] = chunkEntity;
+            ++curChunk;
+            m_freeChunksEntities.insert(chunkEntity);
+            // m_lastOccupiedIndices[{ x, y }] = chunkEntity;
+        }
+    }
+}
 
 void OceansEdge::ChunksManager::buildChunksGrid
 (const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed)
 {
     auto& registry = scene->getECSRegistry();
     
-    ulvec2 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x * 2.0f)), std::floor(playerPosition.z / (Settings::s_chunksSize.z * 2.0f)) };
+    lvec2 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x * 2.0f)), std::floor(playerPosition.z / (Settings::s_chunksSize.z * 2.0f)) };
     
-    std::unordered_set<ulvec2, SGCore::MathUtils::GLMVectorHash<ulvec2>> chunksIndices;
+    std::unordered_set<lvec2, SGCore::MathUtils::GLMVectorHash<lvec2>> tmpOccupiedIndices;
     
-    for(size_t x = 0; x < Settings::s_drawingRange; ++x)
+    size_t curEntityIdx = 0;
+    for(long cx = playerChunk.x - Settings::s_drawingRange / 2; cx < playerChunk.x + Settings::s_drawingRange / 2; ++cx)
     {
-        for(size_t y = 0; y < Settings::s_drawingRange; ++y)
+        for(long cy = playerChunk.y - Settings::s_drawingRange / 2; cy < playerChunk.y + Settings::s_drawingRange / 2; ++cy)
         {
-            chunksIndices.insert({ x, y });
+            tmpOccupiedIndices.insert(lvec2 { cx, cy });
         }
     }
     
-    decltype(m_chunks) newChunks;
+    /*auto tmp = m_lastOccupiedIndices;
+    m_lastOccupiedIndices.clear();*/
     
-    for(const auto& v : chunksIndices)
+    auto ocIt = m_lastOccupiedIndices.begin();
+    while(ocIt != m_lastOccupiedIndices.end())
     {
-        if(m_chunks.contains(v))
+        if(tmpOccupiedIndices.contains(ocIt->first))
         {
-            newChunks[v] = m_chunks[v];
+            m_freeChunksEntities.erase(ocIt->second);
+            ++ocIt;
         }
         else
         {
-            newChunks[v] = registry.create();
+            m_freeChunksEntities.insert(ocIt->second);
+            ocIt = m_lastOccupiedIndices.erase(ocIt);
+        }
+    }
+    
+    for(const auto& p : tmpOccupiedIndices)
+    {
+        if(!m_lastOccupiedIndices.contains(p) && !m_freeChunksEntities.empty())
+        {
+            auto fIt = m_freeChunksEntities.begin();
             
-            // create new valid chunk
-            // todo:
+            const auto& chunkEntity = *fIt;
+            
+            lvec2 chunkIdx = p;
+            
+            auto chunkTransform = registry.get<SGCore::Ref<SGCore::Transform>>(chunkEntity);
+            Chunk& chunkEntityChunk = registry.get<Chunk>(chunkEntity);
+            
+            chunkTransform->m_ownTransform.m_position.x = (chunkIdx.x * Settings::s_chunksSize.x * 2);
+            chunkTransform->m_ownTransform.m_position.z = (chunkIdx.y * Settings::s_chunksSize.z * 2);
             
             SGCore::PerlinNoise perlinNoise;
             // todo: make flexible settings
-            perlinNoise.generate(v * ulvec2 { Settings::s_chunksSize.x, Settings::s_chunksSize.z }, { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 6, 0.6f);
+            perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
+                                 { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
+            // perlinNoise.generate({ Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
+            
+            for(long x = 0; x < Settings::s_chunksSize.x; ++x)
+            {
+                for(long z = 0; z < Settings::s_chunksSize.z; ++z)
+                {
+                    float rawY = perlinNoise.m_map.get(x, z);
+                    float y = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
+                    
+                    const auto& blockEntity = chunkEntityChunk.m_blocks[{ x, z }];
+                    
+                    auto blockTransform = registry.get<SGCore::Ref<SGCore::Transform>>(blockEntity);
+                    
+                    blockTransform->m_ownTransform.m_position.x = x * 2;
+                    blockTransform->m_ownTransform.m_position.y = y;
+                    blockTransform->m_ownTransform.m_position.z = z * 2;
+                }
+            }
+            
+            m_lastOccupiedIndices.emplace(p, chunkEntity);
+            
+            fIt = m_freeChunksEntities.erase(fIt);
         }
     }
     
-    // delete not valid chunks
-    for(auto& p : m_chunks)
+    /*long curChunkBitFlag = 1;
+    size_t curChunk = 0;
+    for(long cx = playerChunk.x - Settings::s_drawingRange / 2; cx < playerChunk.x + Settings::s_drawingRange / 2; ++cx)
     {
-        if(!newChunks.contains(p.first))
+        for(long cy = playerChunk.y - Settings::s_drawingRange / 2; cy < playerChunk.y + Settings::s_drawingRange / 2; ++cy)
         {
-            registry.destroy(p.second);
+            const size_t hashedChunkIndices = SGCore::MathUtils::hashVector(lvec2 { cx, cy });
+            
+            if(!m_chunksHashes.contains(hashedChunkIndices))
+            {
+                // std::cout << "m_chunksMask: " << m_chunksMask.m_flags << std::endl;
+                
+                const auto& chunkEntity = m_chunksEntities[curChunk];
+                
+                auto chunkTransform = registry.get<SGCore::Ref<SGCore::Transform>>(chunkEntity);
+                Chunk& chunkEntityChunk = registry.get<Chunk>(chunkEntity);
+                
+                chunkTransform->m_ownTransform.m_position.x = (cx * Settings::s_chunksSize.x * 2);
+                chunkTransform->m_ownTransform.m_position.z = (cy * Settings::s_chunksSize.z * 2);
+                
+                SGCore::PerlinNoise perlinNoise;
+                // todo: make flexible settings
+                perlinNoise.generate((lvec2 { cx, cy } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 }, { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
+                // perlinNoise.generate({ Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
+                
+                for(long x = 0; x < Settings::s_chunksSize.x; ++x)
+                {
+                    for(long z = 0; z < Settings::s_chunksSize.z; ++z)
+                    {
+                        float rawY = perlinNoise.m_map.get(x, z);
+                        float y = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
+                        
+                        const auto& blockEntity = chunkEntityChunk.m_blocks[{ x, z }];
+                        
+                        auto blockTransform = registry.get<SGCore::Ref<SGCore::Transform>>(blockEntity);
+                        
+                        blockTransform->m_ownTransform.m_position.x = x * 2;
+                        blockTransform->m_ownTransform.m_position.y = y;
+                        blockTransform->m_ownTransform.m_position.z = z * 2;
+                    }
+                }
+                
+                m_chunksHashes.insert(hashedChunkIndices);
+            }
+            
+            // curChunkBitFlag >>= 1;
+            ++curChunk;
         }
-    }
+    }*/
     
-    m_chunks = newChunks;
+    // m_lastPlayerChunk = playerChunk;
     
-    SGCore::PerlinNoise perlinNoise;
+    /*SGCore::PerlinNoise perlinNoise;
     // todo: make flexible settings
     perlinNoise.generate({ Settings::s_chunksSize.x * Settings::s_drawingRange, Settings::s_chunksSize.z * Settings::s_drawingRange}, 6, 0.6f);
-    
-    const size_t totalSurfaceBlocksInChunkCnt = Settings::s_chunksSize.x * Settings::s_chunksSize.z * 2;
     
     for(size_t cx = 0; cx < Settings::s_drawingRange; ++cx)
     {
@@ -115,10 +248,10 @@ void OceansEdge::ChunksManager::buildChunksGrid
                 }
             }
         }
-    }
+    }*/
 }
 
-std::unordered_map<OceansEdge::ulvec2, entt::entity, SGCore::MathUtils::GLMVectorHash<OceansEdge::ulvec2>>& OceansEdge::ChunksManager::getChunks() noexcept
+std::unordered_map<OceansEdge::lvec2, entt::entity, SGCore::MathUtils::GLMVectorHash<OceansEdge::lvec2>>& OceansEdge::ChunksManager::getChunks() noexcept
 {
     return m_chunks;
 }
