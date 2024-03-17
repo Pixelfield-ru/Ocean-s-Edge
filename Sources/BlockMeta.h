@@ -1,19 +1,18 @@
 //
-// Created by ilya on 17.02.24.
+// Created by ilya on 16.03.24.
 //
 
 #ifndef OCEANSEDGE_BLOCKMETA_H
 #define OCEANSEDGE_BLOCKMETA_H
 
-#include <SGCore/Main/CoreGlobals.h>
-#include <SGCore/ImportedScenesArch/IMeshData.h>
-#include "AtlasPointMeta.h"
+#include <cstddef>
+#include "BlocksTypes.h"
 
 namespace OceansEdge
 {
     struct BlockMeta
     {
-        SGCore::Ref<SGCore::IMeshData> m_meshData;
+        size_t m_type = BlocksTypes::OEB_AIR;
     };
 }
 

@@ -40,9 +40,14 @@
 #include "Skybox/DayNightCycleSystem.h"
 #include "BlocksTypes.h"
 #include "Atlas.h"
+#include "ChunksManager.h"
+
+SGCore::Ref<SGCore::Transform> chunk0Transform;
 
 void OceansEdge::GameMain::init()
 {
+    std::cout << "fdfdf" << std::endl;
+    
     SGCore::RenderPipelinesManager::registerRenderPipeline(SGCore::MakeRef<SGCore::PBRRenderPipeline>());
     SGCore::RenderPipelinesManager::setCurrentRenderPipeline<SGCore::PBRRenderPipeline>();
     
@@ -98,7 +103,7 @@ void OceansEdge::GameMain::init()
     }*/
     
     // BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS) = nullptr;
-    auto& mudWithGrassBlockMeta = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS);
+    auto& mudWithGrassBlockMeta = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS);
     // mudWithGrassBlockMeta.m_meshData = mudWithGrassModel->m_nodes[0]->m_children[0]->m_children[0]->m_meshesData[0];
     mudWithGrassBlockMeta.m_meshData = mudWithGrassModel->m_nodes[0]->m_children[0]->m_meshesData[0];
     mudWithGrassBlockMeta.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_DIFFUSE, Atlas::getAtlas());
@@ -262,57 +267,9 @@ void OceansEdge::GameMain::init()
         blocksInstancing.m_updateUVs = false;
         blocksInstancing.m_updatePositions = false;*/
         
-        entt::entity blocksBatchingEntity = m_worldScene->getECSRegistry().create();
-        SGCore::Batch& blocksBatch = m_worldScene->getECSRegistry().emplace<SGCore::Batch>(blocksBatchingEntity,
-                                                                                           m_worldScene,
-                                                                                           1024 * 1024 * 6,
-                                                                                           250'000);
-
-        try
-        {
-            float curZ = 0;
-            
-            for(int x = 0; x < perlinMapSize.x; ++x)
-            {
-                for(int y = 0; y < perlinMapSize.y; ++y)
-                {
-                    float z = perlinNoise.m_map.get(x, y);
-                    // curZ += z * 2.0f;
-                    
-                    // std::cout << z << std::endl;
-
-                    {
-                        entt::entity blockEntity = BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS
-                        ).m_meshData->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME);
-                        m_worldScene->getECSRegistry().emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
-                        m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
-                        m_worldScene->getECSRegistry().remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);
-
-                        blocksBatch.addEntity(blockEntity);
-                        // blocksInstancing.m_entitiesToRender.push_back(blockEntity);
-
-                        auto blockTransform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(
-                                blockEntity
-                        );
-                        blockTransform->m_ownTransform.m_position.x = (float) x * 2;
-                        blockTransform->m_ownTransform.m_position.y = z * 50.0f;
-                        blockTransform->m_ownTransform.m_position.z = (float) y * 2;
-
-                        // m_worldScene->getECSRegistry().patch<SGCore::Transform>(blockEntity);
-                    }
-                }
-            }
-
-            std::cout << "blocks instancing created" << std::endl;
-
-            stbi_write_png("perlin_noise_test.png", perlinMapSize.x, perlinMapSize.y, 4,
-                           (perlinNoise.m_map.data()), 4 * perlinMapSize.x
-            );
-        }
-        catch(const std::exception& e)
-        {
-            spdlog::error("FATAL ERROR: {0}", e.what());
-        }
+        ChunksManager::buildChunksGrid(m_worldScene, glm::vec3 { 0, 0, 0 }, 0);
+        
+        // chunk0Transform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(ChunksManager::getChunks()[0]);
     }
     
     // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
@@ -333,6 +290,8 @@ void OceansEdge::GameMain::init()
 
 void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
 {
+    // chunk0Transform->m_ownTransform.m_rotation.y += 10.0f * dt;
+    
     SGCore::Scene::getCurrentScene()->fixedUpdate(dt, fixedDt);
 }
 

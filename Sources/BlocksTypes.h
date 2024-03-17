@@ -7,7 +7,7 @@
 
 #include <cstddef>
 #include <unordered_map>
-#include "BlockMeta.h"
+#include "BlockTypeMeta.h"
 
 namespace OceansEdge
 {
@@ -18,13 +18,13 @@ namespace OceansEdge
         static constexpr const inline size_t OEB_AIR = 0;
         static constexpr const inline size_t OEB_MUD_WITH_GRASS = 1;
         
-        static auto& getBlockMeta(const size_t& blockType) noexcept
+        static auto& getBlockTypeMeta(const size_t& blockType) noexcept
         {
-            return m_blocksMeshesData[blockType];
+            return m_blocksTypesMeta[blockType];
         }
         
     private:
-        static inline std::unordered_map<size_t, BlockMeta> m_blocksMeshesData;
+        static inline std::unordered_map<size_t, BlockTypeMeta> m_blocksTypesMeta;
     };
 }
 

@@ -8,6 +8,8 @@
  ENDIF()
 
  add_definitions(-DENTT_USE_ATOMIC)
+ add_definitions(-DBOOST_STACKTRACE_USE_ADDR2LINE)
+ add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
 
  set(CMAKE_CXX_STANDARD 23)
 
@@ -15,7 +17,7 @@
 
  IF(NOT MSVC)
      add_compile_options(-fPIC)
-     set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-implicit-fallthrough -Wno-ignored-qualifiers")
+     set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-implicit-fallthrough -Wno-ignored-qualifiers -g -rdynamic -fno-pie -no-pie")
      set(CMAKE_CXX_FLAGS_DEBUG "-O1")
      set(CMAKE_CXX_FLAGS_RELEASE "-O3")
  else()
