@@ -10,6 +10,7 @@
  add_definitions(-DENTT_USE_ATOMIC)
  add_definitions(-DBOOST_STACKTRACE_USE_ADDR2LINE)
  add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
+ add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
  set(CMAKE_CXX_STANDARD 23)
 
@@ -66,11 +67,11 @@
          ${SUNGEAR_DIR}/Externals/fmt/include
  )
 
- set(SG_RESOURCES_COPY_MODELS OFF)
+ set(SG_RESOURCES_COPY_MODELS ON)
  set(SG_RESOURCES_COPY_SHADERS ON)
- set(SG_RESOURCES_COPY_TEXTURES OFF)
- set(SG_RESOURCES_COPY_UI OFF)
- set(SG_RESOURCES_COPY_FONTS OFF)
+ set(SG_RESOURCES_COPY_TEXTURES ON)
+ set(SG_RESOURCES_COPY_UI ON)
+ set(SG_RESOURCES_COPY_FONTS ON)
 
  add_subdirectory(${SUNGEAR_DIR}/Externals Externals)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
