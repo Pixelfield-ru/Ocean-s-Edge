@@ -10,13 +10,23 @@
 
 #include <unordered_map>
 #include <SGUtils/Math/MathUtils.h>
+#include <SGUtils/SingleArrayMultiArray.h>
 #include "GameGlobals.h"
+#include "BlockData.h"
 
 namespace OceansEdge
 {
     struct Chunk
     {
-        std::unordered_map<lvec2, entt::entity, SGCore::MathUtils::GLMVectorHash<lvec2>> m_blocks;
+        // using blocks_containter_t = std::unordered_map<lvec3, SGCore::Ref<BlockData>, SGCore::MathUtils::GLMVectorHash<lvec3>>;
+        // using blocks_containter_t = std::vector<std::vector<std::vector<BlockData>>>;
+        // using blocks_container_t = BlockData***;
+        using blocks_container_t = SGCore::SingleArrayMultiArray<BlockData, 3>;
+        
+        blocks_container_t m_blocks;
+        
+        // blocks_container_t m_blocks { };
+        // std::unordered_map<lvec3, SGCore::entity_t, SGCore::MathUtils::GLMVectorHash<lvec3>> m_blocks;
         
     private:
         bool m_dummy = true;

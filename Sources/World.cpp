@@ -11,61 +11,73 @@
 #include <SGCore/Scene/Layer.h>
 #include <SGCore/Render/Batching/Batch.h>
 #include <SGCore/Scene/EntityBaseInfo.h>
-#include "ChunksManager.h"
+#include "World.h"
 #include "BlocksTypes.h"
 #include "Chunk.h"
+#include "BlockData.h"
 
-void OceansEdge::ChunksManager::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept
+void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept
 {
     auto& registry = scene->getECSRegistry();
     
     const size_t totalSurfaceBlocksInChunkCnt = Settings::s_chunksSize.x * Settings::s_chunksSize.z * 2;
     
-    m_chunksEntities.resize(Settings::s_drawingRange * Settings::s_drawingRange);
-    
     size_t curChunk = 0;
-    for(long x = -Settings::s_drawingRange / 2; x < +Settings::s_drawingRange / 2; ++x)
+    size_t blockIdx = 0;
+    for(long x = -Settings::s_drawingRange / 2; x < Settings::s_drawingRange / 2; ++x)
     {
-        for(long y = -Settings::s_drawingRange / 2; y < +Settings::s_drawingRange / 2; ++y)
+        for(long y = -Settings::s_drawingRange / 2; y < Settings::s_drawingRange / 2; ++y)
         {
-            entt::entity chunkEntity = registry.create();
+            auto chunk = SGCore::MakeRef<Chunk>();
+            m_chunks[{ x, y }] = chunk;
             
-            auto& chunkBatch = registry.emplace<SGCore::Batch>(chunkEntity, scene,
+            chunk->m_blocks = Chunk::blocks_container_t(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
+            // chunk->m_blocks = new BlockData**[Settings::s_chunksSize.x];
+            
+            /*auto& chunkBatch = registry.emplace<SGCore::Batch>(chunkEntity, scene,
                                                                totalSurfaceBlocksInChunkCnt * 36,
-                                                               totalSurfaceBlocksInChunkCnt);
-            
-            auto chunkTransform = registry.emplace<SGCore::Ref<SGCore::Transform>>(chunkEntity,
-                                                                                   SGCore::MakeRef<SGCore::Transform>());
-            auto& chunkEntityChunk = registry.emplace<Chunk>(chunkEntity);
+                                                               totalSurfaceBlocksInChunkCnt);*/
             
             for(std::uint32_t bx = 0; bx < Settings::s_chunksSize.x; ++bx)
             {
-                for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
+                // chunk->m_blocks[bx] = new BlockData*[Settings::s_chunksSize.y];
+                
+                for(std::uint32_t by = 0; by < Settings::s_chunksSize.y; ++by)
                 {
-                    auto blockEntity = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS)
-                            .m_meshData->addOnScene(scene, SG_LAYER_OPAQUE_NAME);
-                    registry.emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
-                    registry.remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
-                    registry.remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);
-                    
-                    chunkEntityChunk.m_blocks[{ bx, bz }] = blockEntity;
-                    
-                    chunkBatch.addEntity(blockEntity);
-                    
-                    SGCore::EntityBaseInfo& blockEntityBaseInfo = registry.get<SGCore::EntityBaseInfo>(blockEntity);
-                    blockEntityBaseInfo.m_parent = chunkEntity;
+                    // chunk->m_blocks[bx][by] = new BlockData[Settings::s_chunksSize.z];
+                    for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
+                    {
+                        //
+                        //  chunk->m_blocks[bx][by][bz] = { };
+                        // chunk->m_blocks[{ bx, by, bz }] = SGCore::MakeRef<BlockData>();
+                    }
                 }
+                
+                /*auto blockEntity = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS)
+                        .m_meshData->addOnScene(scene, SG_LAYER_OPAQUE_NAME);
+                registry.emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
+                registry.remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
+                registry.remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);*/
+                
+                /*chunkEntityChunk.m_blocks[{ bx, bz }] = blockEntity;
+                
+                chunkBatch.addEntity(blockEntity);
+                
+                SGCore::EntityBaseInfo& blockEntityBaseInfo = registry.get<SGCore::EntityBaseInfo>(blockEntity);
+                blockEntityBaseInfo.m_parent = chunkEntity;*/
             }
             
             // m_chunksEntities[curChunk] = chunkEntity;
             ++curChunk;
-            m_freeChunksEntities.insert(chunkEntity);
+            m_freeChunksEntities.insert(chunk);
             // m_lastOccupiedIndices[{ x, y }] = chunkEntity;
         }
     }
+    
+    std::cout << "created" << std::endl;
 }
 
-void OceansEdge::ChunksManager::buildChunksGrid
+void OceansEdge::World::buildChunksGrid
 (const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed)
 {
     auto& registry = scene->getECSRegistry();
@@ -107,15 +119,12 @@ void OceansEdge::ChunksManager::buildChunksGrid
         {
             auto fIt = m_freeChunksEntities.begin();
             
-            const auto& chunkEntity = *fIt;
+            const auto& chunk = *fIt;
             
             lvec2 chunkIdx = p;
             
-            auto chunkTransform = registry.get<SGCore::Ref<SGCore::Transform>>(chunkEntity);
-            Chunk& chunkEntityChunk = registry.get<Chunk>(chunkEntity);
-            
-            chunkTransform->m_ownTransform.m_position.x = (chunkIdx.x * Settings::s_chunksSize.x * 2);
-            chunkTransform->m_ownTransform.m_position.z = (chunkIdx.y * Settings::s_chunksSize.z * 2);
+            // chunkTransform->m_ownTransform.m_position.x = (chunkIdx.x * Settings::s_chunksSize.x * 2);
+            // chunkTransform->m_ownTransform.m_position.z = (chunkIdx.y * Settings::s_chunksSize.z * 2);
             
             SGCore::PerlinNoise perlinNoise;
             // todo: make flexible settings
@@ -128,19 +137,20 @@ void OceansEdge::ChunksManager::buildChunksGrid
                 for(long z = 0; z < Settings::s_chunksSize.z; ++z)
                 {
                     float rawY = perlinNoise.m_map.get(x, z);
-                    float y = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
+                    float by = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
                     
-                    const auto& blockEntity = chunkEntityChunk.m_blocks[{ x, z }];
-                    
-                    auto blockTransform = registry.get<SGCore::Ref<SGCore::Transform>>(blockEntity);
-                    
-                    blockTransform->m_ownTransform.m_position.x = x * 2;
-                    blockTransform->m_ownTransform.m_position.y = y;
-                    blockTransform->m_ownTransform.m_position.z = z * 2;
+                    for(long y = 0; y < Settings::s_chunksSize.y / 2 + by; ++y)
+                    {
+                        const auto& blockData = chunk->m_blocks.get(x, y, z);
+                        
+                        /*blockData->m_position.x = x * 2;
+                        blockData->m_position.y = by;
+                        blockData->m_position.z = z * 2;*/
+                    }
                 }
             }
             
-            m_lastOccupiedIndices.emplace(p, chunkEntity);
+            m_lastOccupiedIndices.emplace(p, chunk);
             
             fIt = m_freeChunksEntities.erase(fIt);
         }
@@ -249,9 +259,4 @@ void OceansEdge::ChunksManager::buildChunksGrid
             }
         }
     }*/
-}
-
-std::unordered_map<OceansEdge::lvec2, entt::entity, SGCore::MathUtils::GLMVectorHash<OceansEdge::lvec2>>& OceansEdge::ChunksManager::getChunks() noexcept
-{
-    return m_chunks;
 }

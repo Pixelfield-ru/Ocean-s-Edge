@@ -21,7 +21,7 @@ namespace OceansEdge
     
     namespace Settings
     {
-        static inline long s_drawingRange = 10;
+        static inline long s_drawingRange = 20;
         static inline lvec3 s_chunksSize { 64, 256, 64 };
     }
 }

@@ -40,7 +40,7 @@
 #include "Skybox/DayNightCycleSystem.h"
 #include "BlocksTypes.h"
 #include "Atlas.h"
-#include "ChunksManager.h"
+#include "World.h"
 #include "Player.h"
 
 SGCore::Ref<SGCore::Transform> chunk0Transform;
@@ -149,7 +149,7 @@ void OceansEdge::GameMain::init()
     
     // INITIALIZING PLAYER ---------------------------------------
     
-    entt::entity testCameraEntity = m_worldScene->getECSRegistry().create();
+    auto testCameraEntity = m_worldScene->getECSRegistry().create();
     SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
     m_worldScene->getECSRegistry().emplace<Player>(testCameraEntity);
@@ -167,7 +167,7 @@ void OceansEdge::GameMain::init()
     // INITIALIZING SKYBOX ---------------------------------------
     
     {
-        std::vector<entt::entity> skyboxEntities;
+        std::vector<SGCore::entity_t> skyboxEntities;
         skyboxModel->m_nodes[0]->addOnScene(m_worldScene, SG_LAYER_OPAQUE_NAME, [&skyboxEntities](const auto& entity) {
             skyboxEntities.push_back(entity);
         });
@@ -194,7 +194,7 @@ void OceansEdge::GameMain::init()
     // -----------------------------------------------------------
     
     {
-        entt::entity uiCameraEntity = m_worldScene->getECSRegistry().create();
+        auto uiCameraEntity = m_worldScene->getECSRegistry().create();
         SGCore::UICamera& uiCameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::UICamera>(uiCameraEntity);
         auto uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity, SGCore::MakeRef<SGCore::Transform>());
         auto& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::RenderingBase>>(uiCameraEntity,
@@ -234,7 +234,7 @@ void OceansEdge::GameMain::init()
         timesNewRomanFont_height128_rus->saveAtlasAsTexture("font_spec_test_rus.png");
         timesNewRomanFont_height128_eng->saveAtlasAsTexture("font_spec_test_eng.png");
         
-        entt::entity textEntity = m_worldScene->getECSRegistry().create();
+        auto textEntity = m_worldScene->getECSRegistry().create();
         SGCore::Text& helloWorldUIText = m_worldScene->getECSRegistry().emplace<SGCore::Text>(textEntity);
         auto helloWorldUITextTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(textEntity, SGCore::MakeRef<SGCore::Transform>());
         helloWorldUITextTransform->m_ownTransform.m_scale = { 1.0, 1.0, 1 };
@@ -270,8 +270,10 @@ void OceansEdge::GameMain::init()
         blocksInstancing.m_updateUVs = false;
         blocksInstancing.m_updatePositions = false;*/
         
+        m_world = SGCore::MakeRef<World>();
+        
         // chunk0Transform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(ChunksManager::getChunks()[0]);
-        ChunksManager::prepareGrid(m_worldScene);
+        m_world->prepareGrid(m_worldScene);
     }
     
     // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
@@ -288,6 +290,12 @@ void OceansEdge::GameMain::init()
     // -----------------------------------------------------------
     
     SGCore::ImGuiWrap::ImGuiLayer::initImGui();
+    
+    SGCore::SingleArrayMultiArray<short, 4> testMulArr(2, 3, 2, 4);
+    
+    testMulArr.get(2, 2, 1, 4) = 3;
+    
+    std::cout << "testMulArr.get(0, 0, 0, 0): " << testMulArr.get(2, 2, 1, 4) << std::endl;
 }
 
 void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
@@ -301,7 +309,7 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 {
     // std::cout << playerTransform->m_ownTransform.m_position.x << std::endl;
     
-    ChunksManager::buildChunksGrid(m_worldScene, playerTransform->m_ownTransform.m_position, 0);
+    m_world->buildChunksGrid(m_worldScene, playerTransform->m_ownTransform.m_position, 0);
     
     SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
     

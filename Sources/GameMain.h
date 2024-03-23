@@ -5,6 +5,8 @@
 #ifndef OCEANSEDGE_GAMEMAIN_H
 #define OCEANSEDGE_GAMEMAIN_H
 
+#include "World.h"
+
 int main();
 
 namespace SGCore
@@ -22,6 +24,7 @@ namespace OceansEdge
         
     private:
         static inline SGCore::Ref<SGCore::Scene> m_worldScene;
+        static inline SGCore::Ref<World> m_world;
     };
 }
 
