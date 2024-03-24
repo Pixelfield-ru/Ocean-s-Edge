@@ -2,7 +2,6 @@
 // Created by ilya on 16.03.24.
 //
 
-#include <SGUtils/Noise/PerlinNoise.h>
 #include <SGCore/Main/CoreGlobals.h>
 #include <SGCore/Render/DisableMeshGeometryPass.h>
 #include <SGCore/Render/SpacePartitioning/OctreeCullableInfo.h>
@@ -48,7 +47,7 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
                     for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
                     {
                         //
-                        chunk->m_blocks.get(bx, by, bz) = { };
+                        chunk->m_blocks[bx][by][bz] = { };
                         // chunk->m_blocks[{ bx, by, bz }] = SGCore::MakeRef<BlockData>();
                     }
                 }
@@ -82,7 +81,7 @@ void OceansEdge::World::buildChunksGrid
 {
     auto& registry = scene->getECSRegistry();
     
-    lvec2 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x * 2.0f)), std::floor(playerPosition.z / (Settings::s_chunksSize.z * 2.0f)) };
+    lvec2 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x)), std::floor(playerPosition.z / (Settings::s_chunksSize.z)) };
     
     std::unordered_set<lvec2, SGCore::MathUtils::GLMVectorHash<lvec2>> tmpOccupiedIndices;
     
@@ -121,16 +120,16 @@ void OceansEdge::World::buildChunksGrid
         {
             auto fIt = m_freeChunksEntities.begin();
             
-            const auto& chunk = *fIt;
+            auto chunk = *fIt;
             
             lvec2 chunkIdx = p;
             
-            const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x * 2, 0, chunkIdx.y * Settings::s_chunksSize.z * 2 };
+            const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x, 0, chunkIdx.y * Settings::s_chunksSize.z };
+            chunk->m_position = { chunkPosition.x, 0, chunkPosition.z };
             
-            SGCore::PerlinNoise perlinNoise;
             // todo: make flexible settings
-            perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
-                                 { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
+            /*perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
+                                 { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);*/
             
             const long endX = Settings::s_chunksSize.x;
             const long endZ = Settings::s_chunksSize.z;
@@ -143,44 +142,66 @@ void OceansEdge::World::buildChunksGrid
             {
                 for(long z = 0; z < endZ; ++z)
                 {
-                    float rawY = perlinNoise.m_map.get(x, z);
-                    float by = std::floor(((rawY * 50)) / (Settings::s_blockHalfSize.y * 2.0)) * Settings::s_blockHalfSize.y * 2.0;
+                    float rawY = m_perlinNoise.octave2D_01((chunkPosition.x + x) * 0.03, (chunkPosition.z + z) * 0.03, 1);
+                    float by = std::floor(rawY * 50);
                     
-                    const long endY = Settings::s_chunksSize.y / 2 + by;
+                    const long endY = std::min<long>(std::ceil(Settings::s_chunksSize.y / 2) + by, Settings::s_chunksSize.y);
                     
                     for(long y = 0; y < endY; ++y)
                     {
-                        auto& blockData = chunk->m_blocks.get(x, y, z);
+                        auto& blockData = chunk->m_blocks[x][y][z];
                         
-                        glm::vec3 blockPos = { chunkPosition.x + x * Settings::s_blockHalfSize.x * 2,
-                                              by,
-                                              chunkPosition.z + z * Settings::s_blockHalfSize.z * 2 };
+                        blockData.m_type = BlocksTypes::OEB_MUD_WITH_GRASS;
+                    }
+                }
+            }
+            
+            for(long x = 0; x < endX; ++x)
+            {
+                for(long z = 0; z < endZ; ++z)
+                {
+                    float rawY = m_perlinNoise.octave2D_01((chunkPosition.x + x) * 0.03, (chunkPosition.z + z) * 0.03, 1);
+                    float by = std::floor(rawY * 50);
+                    
+                    const long endY = std::min<long>(std::ceil(Settings::s_chunksSize.y / 2) + by, Settings::s_chunksSize.y);
+                    
+                    for(long y = 0; y < endY; ++y)
+                    {
+                        long px = std::min(endX - 1, x + 1);
+                        long mx = std::max<long>(0, x - 1);
+                        long pz = std::min(endZ - 1, z + 1);
+                        long mz = std::max<long>(0, z - 1);
+                        long py = std::min(endY - 1, y + 1);
+                        long my = std::max<long>(0, y - 1);
                         
-                        // blockData.m_type = BlocksTypes::OEB_MUD_WITH_GRASS;
+                        vec3_8 blockPos = { x, y, z };
                         
-                        // blocksPositions.push_back(blockData.m_position.x);
-                        // blocksPositions.push_back(blockData.m_position.y);
-                        // blocksPositions.push_back(blockData.m_position.z);
+                        const auto& pxBD = chunk->m_blocks[px][y][z];
+                        const auto& mxBD = chunk->m_blocks[mx][y][z];
+                        const auto& pyBD = chunk->m_blocks[x][py][z];
+                        const auto& myBD = chunk->m_blocks[x][my][z];
+                        const auto& pzBD = chunk->m_blocks[x][y][pz];
+                        const auto& mzBD = chunk->m_blocks[x][y][mz];
                         
-                        if(y == endY - 1)
+                        if(pyBD.m_type == BlocksTypes::OEB_AIR || y == endY - 1)
                         {
                             addBlockTopSideVertices(blockPos, chunk);
                         }
-                        if(z == 0)
+                        if(pxBD.m_type == BlocksTypes::OEB_AIR || x == endX - 1 )
                         {
-                            addBlockBackSideVertices(blockPos, chunk);
+                            addBlockRightSideVertices(blockPos, chunk);
                         }
-                        if(z == endZ - 1)
-                        {
-                            addBlockFaceSideVertices(blockPos, chunk);
-                        }
-                        if(x == 0)
+                        if(mxBD.m_type == BlocksTypes::OEB_AIR || x == 0)
                         {
                             addBlockLeftSideVertices(blockPos, chunk);
                         }
-                        if(x == endX - 1)
+                        if(pzBD.m_type == BlocksTypes::OEB_AIR || z == endZ - 1)
                         {
-                            addBlockRightSideVertices(blockPos, chunk);
+                            addBlockFaceSideVertices(blockPos, chunk);
+                        }
+                        if(mzBD.m_type == BlocksTypes::OEB_AIR || z == 0)
+                        {
+                            addBlockBackSideVertices(blockPos, chunk);
                         }
                     }
                 }
@@ -197,28 +218,45 @@ void OceansEdge::World::buildChunksGrid
     }
 }
 
-void OceansEdge::World::addBlockTopSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockTopSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    vec3_8 ld = { blockPos.x, blockPos.y + 1, blockPos.z };
+    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
+    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
+    vec3_8 rd = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
     
-    chunk->m_vertices.push_back(ld.x);
-    chunk->m_vertices.push_back(ld.y);
-    chunk->m_vertices.push_back(ld.z);
+    // std::cout << std::to_string(ld.x) << ", " << std::to_string(ld.y) << ", " << std::to_string(ld.z) << std::endl;
     
-    chunk->m_vertices.push_back(lt.x);
-    chunk->m_vertices.push_back(lt.y);
-    chunk->m_vertices.push_back(lt.z);
+    int face = 0;
     
-    chunk->m_vertices.push_back(rt.x);
-    chunk->m_vertices.push_back(rt.y);
-    chunk->m_vertices.push_back(rt.z);
+    int ldData = 0;
+    ldData |= ldData | ld.x;
+    ldData |= ldData | (ld.y << 6);
+    ldData |= ldData | (ld.z << 12);
+    ldData |= ldData | (face << 18);
     
-    chunk->m_vertices.push_back(rd.x);
-    chunk->m_vertices.push_back(rd.y);
-    chunk->m_vertices.push_back(rd.z);
+    int ltData = 0;
+    ltData |= ltData | lt.x;
+    ltData |= ltData | (lt.y << 6);
+    ltData |= ltData | (lt.z << 12);
+    ltData |= ltData | (face << 18);
+    
+    int rtData = 0;
+    rtData |= rtData | rt.x;
+    rtData |= rtData | (rt.y << 6);
+    rtData |= rtData | (rt.z << 12);
+    rtData |= rtData | (face << 18);
+    
+    int rdData = 0;
+    rdData |= rdData | rd.x;
+    rdData |= rdData | (rd.y << 6);
+    rdData |= rdData | (rd.z << 12);
+    rdData |= rdData | (face << 18);
+    
+    chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rdData);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -227,31 +265,46 @@ void OceansEdge::World::addBlockTopSideVertices(const glm::vec3& blockPos, const
     chunk->m_indices.push_back(chunk->m_currentIndex + 3);
     chunk->m_indices.push_back(chunk->m_currentIndex + 2);
     
-    chunk->m_currentIndex += 6;
+    chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockBottomSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockBottomSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z };
+    vec3_8 lt = { blockPos.x, blockPos.y, blockPos.z + 1 };
+    vec3_8 rt = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
+    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z };
     
-    chunk->m_vertices.push_back(ld.x);
-    chunk->m_vertices.push_back(ld.y);
-    chunk->m_vertices.push_back(ld.z);
+    int face = 1;
     
-    chunk->m_vertices.push_back(lt.x);
-    chunk->m_vertices.push_back(lt.y);
-    chunk->m_vertices.push_back(lt.z);
+    int ldData = 0;
+    ldData |= ldData | ld.x;
+    ldData |= ldData | (ld.y << 6);
+    ldData |= ldData | (ld.z << 12);
+    ldData |= ldData | (face << 18);
     
-    chunk->m_vertices.push_back(rt.x);
-    chunk->m_vertices.push_back(rt.y);
-    chunk->m_vertices.push_back(rt.z);
+    int ltData = 0;
+    ltData |= ltData | lt.x;
+    ltData |= ltData | (lt.y << 6);
+    ltData |= ltData | (lt.z << 12);
+    ltData |= ltData | (face << 18);
     
-    chunk->m_vertices.push_back(rd.x);
-    chunk->m_vertices.push_back(rd.y);
-    chunk->m_vertices.push_back(rd.z);
+    int rtData = 0;
+    rtData |= rtData | rt.x;
+    rtData |= rtData | (rt.y << 6);
+    rtData |= rtData | (rt.z << 12);
+    rtData |= rtData | (face << 18);
+    
+    int rdData = 0;
+    rdData |= rdData | rd.x;
+    rdData |= rdData | (rd.y << 6);
+    rdData |= rdData | (rd.z << 12);
+    rdData |= rdData | (face << 18);
+    
+    chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rdData);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -260,31 +313,46 @@ void OceansEdge::World::addBlockBottomSideVertices(const glm::vec3& blockPos, co
     chunk->m_indices.push_back(chunk->m_currentIndex + 3);
     chunk->m_indices.push_back(chunk->m_currentIndex + 2);
     
-    chunk->m_currentIndex += 6;
+    chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockFaceSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockFaceSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z + 1 };
+    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
+    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
+    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
     
-    chunk->m_vertices.push_back(ld.x);
-    chunk->m_vertices.push_back(ld.y);
-    chunk->m_vertices.push_back(ld.z);
+    int face = 4;
     
-    chunk->m_vertices.push_back(lt.x);
-    chunk->m_vertices.push_back(lt.y);
-    chunk->m_vertices.push_back(lt.z);
+    int ldData = 0;
+    ldData |= ldData | ld.x;
+    ldData |= ldData | (ld.y << 6);
+    ldData |= ldData | (ld.z << 12);
+    ldData |= ldData | (face << 18);
     
-    chunk->m_vertices.push_back(rt.x);
-    chunk->m_vertices.push_back(rt.y);
-    chunk->m_vertices.push_back(rt.z);
+    int ltData = 0;
+    ltData |= ltData | lt.x;
+    ltData |= ltData | (lt.y << 6);
+    ltData |= ltData | (lt.z << 12);
+    ltData |= ltData | (face << 18);
     
-    chunk->m_vertices.push_back(rd.x);
-    chunk->m_vertices.push_back(rd.y);
-    chunk->m_vertices.push_back(rd.z);
+    int rtData = 0;
+    rtData |= rtData | rt.x;
+    rtData |= rtData | (rt.y << 6);
+    rtData |= rtData | (rt.z << 12);
+    rtData |= rtData | (face << 18);
+    
+    int rdData = 0;
+    rdData |= rdData | rd.x;
+    rdData |= rdData | (rd.y << 6);
+    rdData |= rdData | (rd.z << 12);
+    rdData |= rdData | (face << 18);
+    
+    chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rdData);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -293,31 +361,46 @@ void OceansEdge::World::addBlockFaceSideVertices(const glm::vec3& blockPos, cons
     chunk->m_indices.push_back(chunk->m_currentIndex + 3);
     chunk->m_indices.push_back(chunk->m_currentIndex + 2);
     
-    chunk->m_currentIndex += 6;
+    chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockBackSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockBackSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z };
+    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z };
+    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
+    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z };
     
-    chunk->m_vertices.push_back(ld.x);
-    chunk->m_vertices.push_back(ld.y);
-    chunk->m_vertices.push_back(ld.z);
+    int face = 5;
     
-    chunk->m_vertices.push_back(lt.x);
-    chunk->m_vertices.push_back(lt.y);
-    chunk->m_vertices.push_back(lt.z);
+    int ldData = 0;
+    ldData |= ldData | ld.x;
+    ldData |= ldData | (ld.y << 6);
+    ldData |= ldData | (ld.z << 12);
+    ldData |= ldData | (face << 18);
     
-    chunk->m_vertices.push_back(rt.x);
-    chunk->m_vertices.push_back(rt.y);
-    chunk->m_vertices.push_back(rt.z);
+    int ltData = 0;
+    ltData |= ltData | lt.x;
+    ltData |= ltData | (lt.y << 6);
+    ltData |= ltData | (lt.z << 12);
+    ltData |= ltData | (face << 18);
     
-    chunk->m_vertices.push_back(rd.x);
-    chunk->m_vertices.push_back(rd.y);
-    chunk->m_vertices.push_back(rd.z);
+    int rtData = 0;
+    rtData |= rtData | rt.x;
+    rtData |= rtData | (rt.y << 6);
+    rtData |= rtData | (rt.z << 12);
+    rtData |= rtData | (face << 18);
+    
+    int rdData = 0;
+    rdData |= rdData | rd.x;
+    rdData |= rdData | (rd.y << 6);
+    rdData |= rdData | (rd.z << 12);
+    rdData |= rdData | (face << 18);
+    
+    chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rdData);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -326,31 +409,46 @@ void OceansEdge::World::addBlockBackSideVertices(const glm::vec3& blockPos, cons
     chunk->m_indices.push_back(chunk->m_currentIndex + 3);
     chunk->m_indices.push_back(chunk->m_currentIndex + 2);
     
-    chunk->m_currentIndex += 6;
+    chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockLeftSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockLeftSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 rt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rd = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z };
+    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z };
+    vec3_8 rt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
+    vec3_8 rd = { blockPos.x, blockPos.y, blockPos.z + 1 };
     
-    chunk->m_vertices.push_back(ld.x);
-    chunk->m_vertices.push_back(ld.y);
-    chunk->m_vertices.push_back(ld.z);
+    int face = 3;
     
-    chunk->m_vertices.push_back(lt.x);
-    chunk->m_vertices.push_back(lt.y);
-    chunk->m_vertices.push_back(lt.z);
+    int ldData = 0;
+    ldData |= ldData | ld.x;
+    ldData |= ldData | (ld.y << 6);
+    ldData |= ldData | (ld.z << 12);
+    ldData |= ldData | (face << 18);
     
-    chunk->m_vertices.push_back(rt.x);
-    chunk->m_vertices.push_back(rt.y);
-    chunk->m_vertices.push_back(rt.z);
+    int ltData = 0;
+    ltData |= ltData | lt.x;
+    ltData |= ltData | (lt.y << 6);
+    ltData |= ltData | (lt.z << 12);
+    ltData |= ltData | (face << 18);
     
-    chunk->m_vertices.push_back(rd.x);
-    chunk->m_vertices.push_back(rd.y);
-    chunk->m_vertices.push_back(rd.z);
+    int rtData = 0;
+    rtData |= rtData | rt.x;
+    rtData |= rtData | (rt.y << 6);
+    rtData |= rtData | (rt.z << 12);
+    rtData |= rtData | (face << 18);
+    
+    int rdData = 0;
+    rdData |= rdData | rd.x;
+    rdData |= rdData | (rd.y << 6);
+    rdData |= rdData | (rd.z << 12);
+    rdData |= rdData | (face << 18);
+    
+    chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rdData);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -359,31 +457,46 @@ void OceansEdge::World::addBlockLeftSideVertices(const glm::vec3& blockPos, cons
     chunk->m_indices.push_back(chunk->m_currentIndex + 3);
     chunk->m_indices.push_back(chunk->m_currentIndex + 2);
     
-    chunk->m_currentIndex += 6;
+    chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockRightSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockRightSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    glm::vec3 ld = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 lt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
-    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
-    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    vec3_8 ld = { blockPos.x + 1, blockPos.y, blockPos.z };
+    vec3_8 lt = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
+    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
+    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
     
-    chunk->m_vertices.push_back(ld.x);
-    chunk->m_vertices.push_back(ld.y);
-    chunk->m_vertices.push_back(ld.z);
+    int face = 2;
     
-    chunk->m_vertices.push_back(lt.x);
-    chunk->m_vertices.push_back(lt.y);
-    chunk->m_vertices.push_back(lt.z);
+    int ldData = 0;
+    ldData |= ldData | ld.x;
+    ldData |= ldData | (ld.y << 6);
+    ldData |= ldData | (ld.z << 12);
+    ldData |= ldData | (face << 18);
     
-    chunk->m_vertices.push_back(rt.x);
-    chunk->m_vertices.push_back(rt.y);
-    chunk->m_vertices.push_back(rt.z);
+    int ltData = 0;
+    ltData |= ltData | lt.x;
+    ltData |= ltData | (lt.y << 6);
+    ltData |= ltData | (lt.z << 12);
+    ltData |= ltData | (face << 18);
     
-    chunk->m_vertices.push_back(rd.x);
-    chunk->m_vertices.push_back(rd.y);
-    chunk->m_vertices.push_back(rd.z);
+    int rtData = 0;
+    rtData |= rtData | rt.x;
+    rtData |= rtData | (rt.y << 6);
+    rtData |= rtData | (rt.z << 12);
+    rtData |= rtData | (face << 18);
+    
+    int rdData = 0;
+    rdData |= rdData | rd.x;
+    rdData |= rdData | (rd.y << 6);
+    rdData |= rdData | (rd.z << 12);
+    rdData |= rdData | (face << 18);
+    
+    chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rdData);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -392,13 +505,14 @@ void OceansEdge::World::addBlockRightSideVertices(const glm::vec3& blockPos, con
     chunk->m_indices.push_back(chunk->m_currentIndex + 3);
     chunk->m_indices.push_back(chunk->m_currentIndex + 2);
     
-    chunk->m_currentIndex += 6;
+    chunk->m_currentIndex += 4;
 }
 
 void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
 {
     for(const auto& chunk : m_chunks)
     {
+        if(!chunk.second) continue;
         chunk.second->render(scene);
     }
 }

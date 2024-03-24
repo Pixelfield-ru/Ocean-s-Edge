@@ -10,7 +10,7 @@
 
 #include <unordered_map>
 #include <SGUtils/Math/MathUtils.h>
-#include <SGUtils/MultiDimensionalSingleArray.h>
+#include <SGUtils/flat_array.h>
 #include <SGCore/ImportedScenesArch/MeshDataRenderInfo.h>
 #include <SGCore/Graphics/API/IShader.h>
 #include <SGUtils/EventListener.h>
@@ -25,15 +25,17 @@ namespace OceansEdge
         
         void render(const SGCore::Ref<SGCore::Scene>& scene);
         
-        // using blocks_containter_t = std::unordered_map<lvec3, SGCore::Ref<BlockData>, SGCore::MathUtils::GLMVectorHash<lvec3>>;
-        // using blocks_containter_t = std::vector<std::vector<std::vector<BlockData>>>;
+        // using blocks_container_t = std::unordered_map<lvec3, BlockData, SGCore::MathUtils::GLMVectorHash<lvec3>>;
+        // using blocks_container_t = std::vector<std::vector<std::vector<BlockData>>>;
         // using blocks_container_t = BlockData***;
-        using blocks_container_t = SGCore::MultiDimensionalSingleArray<BlockData, 3>;
+        using blocks_container_t = flat_array<BlockData, 3>;
         
         blocks_container_t m_blocks;
         
         std::vector<std::uint32_t> m_indices;
-        std::vector<float> m_vertices;
+        std::vector<int> m_vertices;
+        
+        glm::vec3 m_position { 0, 0, 0 };
         
         SGCore::Ref<SGCore::IVertexArray> m_vertexArray;
         SGCore::Ref<SGCore::IVertexBuffer> m_positionsVertexBuffer;

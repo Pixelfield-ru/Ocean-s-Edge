@@ -15,7 +15,6 @@
 #include <SGCore/Render/Atmosphere/Atmosphere.h>
 #include <SGCore/Memory/Assets/Materials/IMaterial.h>
 #include <SGCore/Memory/Assets/ModelAsset.h>
-#include <SGUtils/Noise/PerlinNoise.h>
 #include <SGCore/ImGuiWrap/ImGuiLayer.h>
 #include <SGCore/Render/RenderPipelinesManager.h>
 #include <SGCore/Graphics/API/ITexture2D.h>
@@ -251,13 +250,6 @@ void OceansEdge::GameMain::init()
     // GENERATING WORLD (TEST) -----------------------------------
     
     {
-        SGCore::PerlinNoise perlinNoise;
-        // perlinNoise.setSeed(10);
-        // perlinNoise.generateMapMultiOctave({ 1000, 1000 }, 1, 1.0f);
-        perlinNoise.generate({ 300, 300 }, 6, 0.6f);
-        
-        auto perlinMapSize = perlinNoise.getCurrentMapSize();
-        
         std::cout << "perlin generated" << std::endl;
         
         /*entt::entity blocksInstancingEntity = m_worldScene->getECSRegistry().create();
@@ -290,12 +282,6 @@ void OceansEdge::GameMain::init()
     // -----------------------------------------------------------
     
     SGCore::ImGuiWrap::ImGuiLayer::initImGui();
-    
-    SGCore::MultiDimensionalSingleArray<short, 4> testMulArr(2, 3, 2, 4);
-    
-    testMulArr.get(2, 2, 1, 4) = 3;
-    
-    std::cout << "testMulArr.get(0, 0, 0, 0): " << testMulArr.get(2, 2, 1, 4) << std::endl;
 }
 
 void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)

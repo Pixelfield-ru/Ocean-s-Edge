@@ -14,6 +14,7 @@
 #include <SGCore/Scene/Scene.h>
 #include <SGCore/Render/Camera3D.h>
 #include <SGCore/Transformations/Transform.h>
+#include <SGCore/Render/Atmosphere/AtmosphereUpdater.h>
 
 OceansEdge::Chunk::Chunk()
 {
@@ -30,23 +31,23 @@ OceansEdge::Chunk::Chunk()
                 CoreMain::getRenderer()->createVertexBuffer()
         );
         
-        m_positionsVertexBuffer->setUsage(SGG_STATIC)->create(m_maxVerticesCount * 3 * sizeof(m_maxVerticesCount))->bind();
+        m_positionsVertexBuffer->setUsage(SGG_STATIC)->create(m_maxVerticesCount * sizeof(int))->bind();
         
         bufferLayout->reset()
                 ->addAttribute(Ref<IVertexAttribute>(
                         bufferLayout->createVertexAttribute(0,
-                                                            "vertexPosition",
-                                                            SGG_FLOAT3,
+                                                            "vertexData",
+                                                            SGG_INT,
                                                             (size_t) 0))
                 )
                 ->prepare()->enableAttributes();
         
         m_indicesBuffer = Ref<IIndexBuffer>(CoreMain::getRenderer()->createIndexBuffer());
-        m_indicesBuffer->setUsage(SGG_DYNAMIC)->create(m_maxIndicesCount * sizeof(m_maxIndicesCount));
+        m_indicesBuffer->setUsage(SGG_STATIC)->create(m_maxIndicesCount * sizeof(int));
     }
     
     m_renderInfo.m_useIndices = true;
-    m_renderInfo.m_enableFacesCulling = true;
+    m_renderInfo.m_enableFacesCulling = false;
     m_renderInfo.m_drawMode = SGDrawMode::SGG_TRIANGLES;
     
     RenderPipelinesManager::subscribeToRenderPipelineSetEvent(m_onRenderPipelineSetEventListener);
@@ -69,14 +70,14 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     if(!subPassShader) return;
     
     size_t indicesCount = std::min<size_t>(m_indices.size(), m_maxIndicesCount);
-    size_t verticesCount = std::min<size_t>(m_vertices.size(), m_maxVerticesCount * 3) / 3;
+    size_t verticesCount = std::min<size_t>(m_vertices.size(), m_maxVerticesCount);
     
     subPassShader->bind();
     
-    if(m_needsSubData && m_vertices.size() >= verticesCount * 3)
+    if(m_needsSubData && m_vertices.size() >= verticesCount)
     {
         m_positionsVertexBuffer->bind();
-        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount * 3, 0);
+        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount, 0);
     }
     
     if(m_needsSubData && m_indices.size() >= indicesCount)
@@ -85,13 +86,21 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
         m_indicesBuffer->subData(m_indices.data(), indicesCount, 0);
     }
     
+    auto atmosphereUpdater = scene->getSystem<AtmosphereUpdater>();
+    
     auto camerasView = registry.view<Ref<Camera3D>, Ref<RenderingBase>, Ref<Transform>>();
     
-    camerasView.each([&verticesCount, &indicesCount, &subPassShader, this](Ref<Camera3D> camera3D,
+    camerasView.each([&verticesCount, &indicesCount, &subPassShader, &atmosphereUpdater, this](Ref<Camera3D> camera3D,
             Ref<RenderingBase> renderingBase, Ref<Transform> transform) {
         CoreMain::getRenderer()->prepareUniformBuffers(renderingBase, transform);
         
         subPassShader->useUniformBuffer(CoreMain::getRenderer()->m_viewMatricesBuffer);
+        if(atmosphereUpdater)
+        {
+            subPassShader->useUniformBuffer(atmosphereUpdater->m_uniformBuffer);
+        }
+        
+        subPassShader->useVectorf("u_chunkPosition", m_position);
         
         // std::cout << "verticesCount : " << verticesCount << ", indicesCount : " << indicesCount << std::endl;
         

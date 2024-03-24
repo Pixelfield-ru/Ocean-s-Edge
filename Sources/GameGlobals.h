@@ -20,12 +20,14 @@ namespace OceansEdge
     using lvec3 = glm::vec<3, long, glm::defaultp>;
     using lvec2 = glm::vec<2, long, glm::defaultp>;
     
+    using vec3_8 = glm::vec<3, std::int8_t, glm::defaultp>;
+    using vec2_8 = glm::vec<2, std::int8_t, glm::defaultp>;
+    
     class Settings
     {
     public:
-        static inline long s_drawingRange = 20;
-        static inline lvec3 s_chunksSize { 64, 256, 64 };
-        static inline glm::vec3 s_blockHalfSize { 1, 1, 1 };
+        static inline long s_drawingRange = 40;
+        static inline lvec3 s_chunksSize { 62, 62, 62 };
         
         static void init()
         {

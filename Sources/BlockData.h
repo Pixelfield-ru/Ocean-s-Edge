@@ -17,7 +17,8 @@ namespace OceansEdge
         // glm::vec3 m_position { };
         // size_t m_data = 0;
         // 4 color bytes, 2 bytes for texture id,
-        size_t m_data = 0;
+        // size_t m_data = 0;
+        std::uint16_t m_type = BlocksTypes::OEB_AIR;
         // size_t m_type = BlocksTypes::OEB_AIR;
     };
 }
