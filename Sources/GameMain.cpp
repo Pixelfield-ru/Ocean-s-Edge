@@ -48,7 +48,7 @@ SGCore::Ref<SGCore::Transform> playerTransform;
 
 void OceansEdge::GameMain::init()
 {
-    std::cout << "fdfdf" << std::endl;
+    Settings::init();
     
     SGCore::RenderPipelinesManager::registerRenderPipeline(SGCore::MakeRef<SGCore::PBRRenderPipeline>());
     SGCore::RenderPipelinesManager::setCurrentRenderPipeline<SGCore::PBRRenderPipeline>();
@@ -291,7 +291,7 @@ void OceansEdge::GameMain::init()
     
     SGCore::ImGuiWrap::ImGuiLayer::initImGui();
     
-    SGCore::SingleArrayMultiArray<short, 4> testMulArr(2, 3, 2, 4);
+    SGCore::MultiDimensionalSingleArray<short, 4> testMulArr(2, 3, 2, 4);
     
     testMulArr.get(2, 2, 1, 4) = 3;
     
@@ -376,6 +376,8 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
     ImGui::End();
     
     SGCore::Scene::getCurrentScene()->update(dt, fixedDt);
+    
+    m_world->render(m_worldScene);
     
     SGCore::ImGuiWrap::ImGuiLayer::endFrame();
 }

@@ -48,7 +48,7 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
                     for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
                     {
                         //
-                        //  chunk->m_blocks[bx][by][bz] = { };
+                        chunk->m_blocks.get(bx, by, bz) = { };
                         // chunk->m_blocks[{ bx, by, bz }] = SGCore::MakeRef<BlockData>();
                     }
                 }
@@ -113,6 +113,8 @@ void OceansEdge::World::buildChunksGrid
         }
     }
     
+    // std::vector<float> blocksPositions;
+    
     for(const auto& p : tmpOccupiedIndices)
     {
         if(!m_lastOccupiedIndices.contains(p) && !m_freeChunksEntities.empty())
@@ -123,140 +125,280 @@ void OceansEdge::World::buildChunksGrid
             
             lvec2 chunkIdx = p;
             
-            // chunkTransform->m_ownTransform.m_position.x = (chunkIdx.x * Settings::s_chunksSize.x * 2);
-            // chunkTransform->m_ownTransform.m_position.z = (chunkIdx.y * Settings::s_chunksSize.z * 2);
+            const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x * 2, 0, chunkIdx.y * Settings::s_chunksSize.z * 2 };
             
             SGCore::PerlinNoise perlinNoise;
             // todo: make flexible settings
             perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
                                  { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
-            // perlinNoise.generate({ Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
             
-            for(long x = 0; x < Settings::s_chunksSize.x; ++x)
+            const long endX = Settings::s_chunksSize.x;
+            const long endZ = Settings::s_chunksSize.z;
+            
+            chunk->m_vertices.clear();
+            chunk->m_indices.clear();
+            chunk->m_currentIndex = 0;
+            
+            for(long x = 0; x < endX; ++x)
             {
-                for(long z = 0; z < Settings::s_chunksSize.z; ++z)
+                for(long z = 0; z < endZ; ++z)
                 {
                     float rawY = perlinNoise.m_map.get(x, z);
-                    float by = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
+                    float by = std::floor(((rawY * 50)) / (Settings::s_blockHalfSize.y * 2.0)) * Settings::s_blockHalfSize.y * 2.0;
                     
-                    for(long y = 0; y < Settings::s_chunksSize.y / 2 + by; ++y)
+                    const long endY = Settings::s_chunksSize.y / 2 + by;
+                    
+                    for(long y = 0; y < endY; ++y)
                     {
-                        const auto& blockData = chunk->m_blocks.get(x, y, z);
+                        auto& blockData = chunk->m_blocks.get(x, y, z);
                         
-                        /*blockData->m_position.x = x * 2;
-                        blockData->m_position.y = by;
-                        blockData->m_position.z = z * 2;*/
+                        glm::vec3 blockPos = { chunkPosition.x + x * Settings::s_blockHalfSize.x * 2,
+                                              by,
+                                              chunkPosition.z + z * Settings::s_blockHalfSize.z * 2 };
+                        
+                        // blockData.m_type = BlocksTypes::OEB_MUD_WITH_GRASS;
+                        
+                        // blocksPositions.push_back(blockData.m_position.x);
+                        // blocksPositions.push_back(blockData.m_position.y);
+                        // blocksPositions.push_back(blockData.m_position.z);
+                        
+                        if(y == endY - 1)
+                        {
+                            addBlockTopSideVertices(blockPos, chunk);
+                        }
+                        if(z == 0)
+                        {
+                            addBlockBackSideVertices(blockPos, chunk);
+                        }
+                        if(z == endZ - 1)
+                        {
+                            addBlockFaceSideVertices(blockPos, chunk);
+                        }
+                        if(x == 0)
+                        {
+                            addBlockLeftSideVertices(blockPos, chunk);
+                        }
+                        if(x == endX - 1)
+                        {
+                            addBlockRightSideVertices(blockPos, chunk);
+                        }
                     }
                 }
             }
+            
+            chunk->m_needsSubData = true;
+            
+            // std::cout << "polygons count : " << (chunk->m_polygons.size() / 3) << std::endl;
             
             m_lastOccupiedIndices.emplace(p, chunk);
             
             fIt = m_freeChunksEntities.erase(fIt);
         }
     }
+}
+
+void OceansEdge::World::addBlockTopSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+{
+    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
     
-    /*long curChunkBitFlag = 1;
-    size_t curChunk = 0;
-    for(long cx = playerChunk.x - Settings::s_drawingRange / 2; cx < playerChunk.x + Settings::s_drawingRange / 2; ++cx)
+    chunk->m_vertices.push_back(ld.x);
+    chunk->m_vertices.push_back(ld.y);
+    chunk->m_vertices.push_back(ld.z);
+    
+    chunk->m_vertices.push_back(lt.x);
+    chunk->m_vertices.push_back(lt.y);
+    chunk->m_vertices.push_back(lt.z);
+    
+    chunk->m_vertices.push_back(rt.x);
+    chunk->m_vertices.push_back(rt.y);
+    chunk->m_vertices.push_back(rt.z);
+    
+    chunk->m_vertices.push_back(rd.x);
+    chunk->m_vertices.push_back(rd.y);
+    chunk->m_vertices.push_back(rd.z);
+    
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    
+    chunk->m_currentIndex += 6;
+}
+
+void OceansEdge::World::addBlockBottomSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+{
+    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    
+    chunk->m_vertices.push_back(ld.x);
+    chunk->m_vertices.push_back(ld.y);
+    chunk->m_vertices.push_back(ld.z);
+    
+    chunk->m_vertices.push_back(lt.x);
+    chunk->m_vertices.push_back(lt.y);
+    chunk->m_vertices.push_back(lt.z);
+    
+    chunk->m_vertices.push_back(rt.x);
+    chunk->m_vertices.push_back(rt.y);
+    chunk->m_vertices.push_back(rt.z);
+    
+    chunk->m_vertices.push_back(rd.x);
+    chunk->m_vertices.push_back(rd.y);
+    chunk->m_vertices.push_back(rd.z);
+    
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    
+    chunk->m_currentIndex += 6;
+}
+
+void OceansEdge::World::addBlockFaceSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+{
+    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    
+    chunk->m_vertices.push_back(ld.x);
+    chunk->m_vertices.push_back(ld.y);
+    chunk->m_vertices.push_back(ld.z);
+    
+    chunk->m_vertices.push_back(lt.x);
+    chunk->m_vertices.push_back(lt.y);
+    chunk->m_vertices.push_back(lt.z);
+    
+    chunk->m_vertices.push_back(rt.x);
+    chunk->m_vertices.push_back(rt.y);
+    chunk->m_vertices.push_back(rt.z);
+    
+    chunk->m_vertices.push_back(rd.x);
+    chunk->m_vertices.push_back(rd.y);
+    chunk->m_vertices.push_back(rd.z);
+    
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    
+    chunk->m_currentIndex += 6;
+}
+
+void OceansEdge::World::addBlockBackSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+{
+    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    
+    chunk->m_vertices.push_back(ld.x);
+    chunk->m_vertices.push_back(ld.y);
+    chunk->m_vertices.push_back(ld.z);
+    
+    chunk->m_vertices.push_back(lt.x);
+    chunk->m_vertices.push_back(lt.y);
+    chunk->m_vertices.push_back(lt.z);
+    
+    chunk->m_vertices.push_back(rt.x);
+    chunk->m_vertices.push_back(rt.y);
+    chunk->m_vertices.push_back(rt.z);
+    
+    chunk->m_vertices.push_back(rd.x);
+    chunk->m_vertices.push_back(rd.y);
+    chunk->m_vertices.push_back(rd.z);
+    
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    
+    chunk->m_currentIndex += 6;
+}
+
+void OceansEdge::World::addBlockLeftSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+{
+    glm::vec3 ld = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 lt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 rt = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rd = { blockPos.x - Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    
+    chunk->m_vertices.push_back(ld.x);
+    chunk->m_vertices.push_back(ld.y);
+    chunk->m_vertices.push_back(ld.z);
+    
+    chunk->m_vertices.push_back(lt.x);
+    chunk->m_vertices.push_back(lt.y);
+    chunk->m_vertices.push_back(lt.z);
+    
+    chunk->m_vertices.push_back(rt.x);
+    chunk->m_vertices.push_back(rt.y);
+    chunk->m_vertices.push_back(rt.z);
+    
+    chunk->m_vertices.push_back(rd.x);
+    chunk->m_vertices.push_back(rd.y);
+    chunk->m_vertices.push_back(rd.z);
+    
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    
+    chunk->m_currentIndex += 6;
+}
+
+void OceansEdge::World::addBlockRightSideVertices(const glm::vec3& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+{
+    glm::vec3 ld = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 lt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z - Settings::s_blockHalfSize.z };
+    glm::vec3 rt = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y + Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    glm::vec3 rd = { blockPos.x + Settings::s_blockHalfSize.x, blockPos.y - Settings::s_blockHalfSize.y, blockPos.z + Settings::s_blockHalfSize.z };
+    
+    chunk->m_vertices.push_back(ld.x);
+    chunk->m_vertices.push_back(ld.y);
+    chunk->m_vertices.push_back(ld.z);
+    
+    chunk->m_vertices.push_back(lt.x);
+    chunk->m_vertices.push_back(lt.y);
+    chunk->m_vertices.push_back(lt.z);
+    
+    chunk->m_vertices.push_back(rt.x);
+    chunk->m_vertices.push_back(rt.y);
+    chunk->m_vertices.push_back(rt.z);
+    
+    chunk->m_vertices.push_back(rd.x);
+    chunk->m_vertices.push_back(rd.y);
+    chunk->m_vertices.push_back(rd.z);
+    
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
+    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    
+    chunk->m_currentIndex += 6;
+}
+
+void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
+{
+    for(const auto& chunk : m_chunks)
     {
-        for(long cy = playerChunk.y - Settings::s_drawingRange / 2; cy < playerChunk.y + Settings::s_drawingRange / 2; ++cy)
-        {
-            const size_t hashedChunkIndices = SGCore::MathUtils::hashVector(lvec2 { cx, cy });
-            
-            if(!m_chunksHashes.contains(hashedChunkIndices))
-            {
-                // std::cout << "m_chunksMask: " << m_chunksMask.m_flags << std::endl;
-                
-                const auto& chunkEntity = m_chunksEntities[curChunk];
-                
-                auto chunkTransform = registry.get<SGCore::Ref<SGCore::Transform>>(chunkEntity);
-                Chunk& chunkEntityChunk = registry.get<Chunk>(chunkEntity);
-                
-                chunkTransform->m_ownTransform.m_position.x = (cx * Settings::s_chunksSize.x * 2);
-                chunkTransform->m_ownTransform.m_position.z = (cy * Settings::s_chunksSize.z * 2);
-                
-                SGCore::PerlinNoise perlinNoise;
-                // todo: make flexible settings
-                perlinNoise.generate((lvec2 { cx, cy } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 }, { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
-                // perlinNoise.generate({ Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);
-                
-                for(long x = 0; x < Settings::s_chunksSize.x; ++x)
-                {
-                    for(long z = 0; z < Settings::s_chunksSize.z; ++z)
-                    {
-                        float rawY = perlinNoise.m_map.get(x, z);
-                        float y = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
-                        
-                        const auto& blockEntity = chunkEntityChunk.m_blocks[{ x, z }];
-                        
-                        auto blockTransform = registry.get<SGCore::Ref<SGCore::Transform>>(blockEntity);
-                        
-                        blockTransform->m_ownTransform.m_position.x = x * 2;
-                        blockTransform->m_ownTransform.m_position.y = y;
-                        blockTransform->m_ownTransform.m_position.z = z * 2;
-                    }
-                }
-                
-                m_chunksHashes.insert(hashedChunkIndices);
-            }
-            
-            // curChunkBitFlag >>= 1;
-            ++curChunk;
-        }
-    }*/
-    
-    // m_lastPlayerChunk = playerChunk;
-    
-    /*SGCore::PerlinNoise perlinNoise;
-    // todo: make flexible settings
-    perlinNoise.generate({ Settings::s_chunksSize.x * Settings::s_drawingRange, Settings::s_chunksSize.z * Settings::s_drawingRange}, 6, 0.6f);
-    
-    for(size_t cx = 0; cx < Settings::s_drawingRange; ++cx)
-    {
-        for(size_t cz = 0; cz < Settings::s_drawingRange; ++cz)
-        {
-            entt::entity chunkEntity = registry.create();
-            
-            SGCore::Batch& chunkBatch = registry.emplace<SGCore::Batch>(chunkEntity, scene,
-                                                                        totalSurfaceBlocksInChunkCnt * 36,
-                                                                        totalSurfaceBlocksInChunkCnt);
-            auto chunkTransform = registry.emplace<SGCore::Ref<SGCore::Transform>>(chunkEntity, SGCore::MakeRef<SGCore::Transform>());
-            
-            chunkTransform->m_ownTransform.m_position.x = cx * Settings::s_chunksSize.x * 2;
-            chunkTransform->m_ownTransform.m_position.z = cz * Settings::s_chunksSize.z * 2;
-            
-            for(std::uint32_t x = 0; x < Settings::s_chunksSize.x; ++x)
-            {
-                for(std::uint32_t z = 0; z < Settings::s_chunksSize.z; ++z)
-                {
-                    float rawY = perlinNoise.m_map.get(cx * Settings::s_chunksSize.x + x, cz * Settings::s_chunksSize.z + z);
-                    float y = std::floor(((rawY * 50)) / 2.0f) * 2.0f;
-                    
-                    entt::entity blockEntity = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS
-                    ).m_meshData->addOnScene(scene, SG_LAYER_OPAQUE_NAME);
-                    registry.emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
-                    registry.remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
-                    registry.remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);
-                    
-                    chunkBatch.addEntity(blockEntity);
-                    
-                    auto blockTransform = registry.get<SGCore::Ref<SGCore::Transform>>(
-                            blockEntity
-                    );
-                    
-                    SGCore::EntityBaseInfo& blockEntityBaseInfo = registry.get<SGCore::EntityBaseInfo>(blockEntity);
-                    blockEntityBaseInfo.m_parent = chunkEntity;
-                    // blockTransform->m_ownTransform.m_position.x = cx * GameGlobals::s_chunksSize.x * 2 + (float) x * 2;
-                    blockTransform->m_ownTransform.m_position.x = (float) x * 2;
-                    blockTransform->m_ownTransform.m_position.y = y;
-                    // blockTransform->m_ownTransform.m_position.y = 0;
-                    // blockTransform->m_ownTransform.m_position.z = cz * GameGlobals::s_chunksSize.z * 2 + (float) z * 2;
-                    blockTransform->m_ownTransform.m_position.z = (float) z * 2;
-                    // blockTransform->m_ownTransform.m_position.z = 0.0;
-                    
-                }
-            }
-        }
-    }*/
+        chunk.second->render(scene);
+    }
 }
