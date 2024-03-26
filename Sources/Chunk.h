@@ -30,7 +30,7 @@ namespace OceansEdge
         // using blocks_container_t = BlockData***;
         using blocks_container_t = flat_array<BlockData, 3>;
         
-        blocks_container_t m_blocks;
+        // blocks_container_t m_blocks;
         
         std::vector<std::uint32_t> m_indices;
         std::vector<int> m_vertices;
@@ -48,6 +48,8 @@ namespace OceansEdge
         
         const size_t m_maxVerticesCount = 250'000;
         const size_t m_maxIndicesCount = 250'000 + (m_maxVerticesCount / 3) + 10;
+        
+        bool isBuffersHaveFreeSpace() const noexcept;
         
         SGCore::EventListener<void()> m_onRenderPipelineSetEventListener = SGCore::MakeEventListener<void()>([this]() {
             onRenderPipelineSet();

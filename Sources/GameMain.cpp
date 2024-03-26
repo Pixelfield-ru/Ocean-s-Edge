@@ -370,9 +370,9 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 
 int main()
 {
-    sgSetCoreInitCallback(&OceansEdge::GameMain::init);
-    sgSetFixedUpdateCallback(&OceansEdge::GameMain::fixedUpdate);
-    sgSetUpdateCallback(&OceansEdge::GameMain::update);
+    SGCore::CoreMain::onInit->connect<&OceansEdge::GameMain::init>();
+    SGCore::CoreMain::getRenderTimer().onUpdate->connect<&OceansEdge::GameMain::update>();
+    SGCore::CoreMain::getFixedTimer().onUpdate->connect<&OceansEdge::GameMain::fixedUpdate>();
     
     SGCore::CoreMain::start();
     

@@ -31,13 +31,13 @@ OceansEdge::Chunk::Chunk()
                 CoreMain::getRenderer()->createVertexBuffer()
         );
         
-        m_positionsVertexBuffer->setUsage(SGG_STATIC)->create(m_maxVerticesCount * sizeof(int))->bind();
+        m_positionsVertexBuffer->setUsage(SGG_STATIC)->create(m_maxVerticesCount * 2 * sizeof(int))->bind();
         
         bufferLayout->reset()
                 ->addAttribute(Ref<IVertexAttribute>(
                         bufferLayout->createVertexAttribute(0,
                                                             "vertexData",
-                                                            SGG_INT,
+                                                            SGG_INT2,
                                                             (size_t) 0))
                 )
                 ->prepare()->enableAttributes();
@@ -69,15 +69,15 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     if(!subPassShader) return;
     
+    size_t verticesCount = std::min<size_t>(m_vertices.size() / 2, m_maxVerticesCount);
     size_t indicesCount = std::min<size_t>(m_indices.size(), m_maxIndicesCount);
-    size_t verticesCount = std::min<size_t>(m_vertices.size(), m_maxVerticesCount);
     
     subPassShader->bind();
     
-    if(m_needsSubData && m_vertices.size() >= verticesCount)
+    if(m_needsSubData && m_vertices.size() / 2 >= verticesCount)
     {
         m_positionsVertexBuffer->bind();
-        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount, 0);
+        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount * 2, 0);
     }
     
     if(m_needsSubData && m_indices.size() >= indicesCount)
@@ -124,5 +124,14 @@ void OceansEdge::Chunk::onRenderPipelineSet() noexcept
     
     m_shader->addSubPassShadersAndCompile(AssetManager::loadAsset<FileAsset>(
             Settings::getShadersPaths()["ChunkShader"].getCurrentRealization()));
+}
+
+bool OceansEdge::Chunk::isBuffersHaveFreeSpace() const noexcept
+{
+    bool val = m_vertices.size() / 2 + 4 <= m_maxVerticesCount &&
+               m_indices.size() <= m_maxIndicesCount;
+    
+    
+    return val;
 }
 

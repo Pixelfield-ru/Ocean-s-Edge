@@ -15,8 +15,8 @@ namespace OceansEdge
     {
         friend struct Atlas;
         
-        static constexpr const inline size_t OEB_AIR = 0;
-        static constexpr const inline size_t OEB_MUD_WITH_GRASS = 1;
+        static constexpr const inline std::uint16_t OEB_AIR = 0;
+        static constexpr const inline std::uint16_t OEB_MUD_WITH_GRASS = 1;
         
         static auto& getBlockTypeMeta(const size_t& blockType) noexcept
         {

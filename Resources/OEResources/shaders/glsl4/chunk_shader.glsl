@@ -12,7 +12,7 @@ SGSubPass(ChunksPass)
 {
     SGSubShader(Vertex)
     {
-        layout (location = 0) in int vertexData;
+        layout (location = 0) in ivec2 vertexData;
 
         const vec3 normals[6] = vec3[] (
             vec3(0.0, 1.0, 0.0), // Y+
@@ -29,10 +29,11 @@ SGSubPass(ChunksPass)
 
         void main()
         {
-            int vPosX = vertexData & 63;
-            int vPosY = (vertexData >> 6) & 63;
-            int vPosZ = (vertexData >> 12) & 63;
-            int face = (vertexData >> 18) & 7;
+            int vPosX = vertexData.x & 63;
+            int vPosY = vertexData.y;
+            // int vPosY = (vertexData >> 6) & 63;
+            int vPosZ = (vertexData.x >> 6) & 63;
+            int face = (vertexData.x >> 12) & 7;
 
             vec3 normal = normals[face];
 
@@ -55,7 +56,7 @@ SGSubPass(ChunksPass)
         {
             vec3 lightDir = normalize(atmosphere.sunPosition);
             float diff = max(dot(vsOut.normal, lightDir), 0.0);
-            vec3 diffuse = diff * atmosphere.sunColor;
+            vec3 diffuse = diff * atmosphere.sunColor * vec3(0.0, 1.0, 0.0);
 
             fragColor = vec4(diffuse, 1.0);
         }

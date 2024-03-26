@@ -17,20 +17,27 @@
 
 void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept
 {
+    m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
+    m_chunkTmpYMaximums = flat_array<long, 2>(Settings::s_chunksSize.x, Settings::s_chunksSize.z);
+    
     auto& registry = scene->getECSRegistry();
     
     const size_t totalSurfaceBlocksInChunkCnt = Settings::s_chunksSize.x * Settings::s_chunksSize.z * 2;
     
+    std::random_device dev;
+    m_yDirDistributionRange = std::mt19937(dev());
+    m_yDirDistribution = std::uniform_int_distribution<std::mt19937::result_type>(0, 1);
+    
     size_t curChunk = 0;
     size_t blockIdx = 0;
-    for(long x = -Settings::s_drawingRange / 2; x < Settings::s_drawingRange / 2; ++x)
+    for(long x = -Settings::s_drawingRange; x < Settings::s_drawingRange; ++x)
     {
-        for(long y = -Settings::s_drawingRange / 2; y < Settings::s_drawingRange / 2; ++y)
+        for(long y = -Settings::s_drawingRange; y < Settings::s_drawingRange; ++y)
         {
             auto chunk = SGCore::MakeRef<Chunk>();
             m_chunks[{ x, y }] = chunk;
             
-            chunk->m_blocks = Chunk::blocks_container_t(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
+            // chunk->m_blocks = Chunk::blocks_container_t(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
             // chunk->m_blocks = new BlockData**[Settings::s_chunksSize.x];
             
             /*auto& chunkBatch = registry.emplace<SGCore::Batch>(chunkEntity, scene,
@@ -47,7 +54,8 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
                     for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
                     {
                         //
-                        chunk->m_blocks[bx][by][bz] = { };
+                        // m_chunkTmpBlocks[bx][by][bz] = { };
+                        // chunk->m_blocks[bx][by][bz] = { };
                         // chunk->m_blocks[{ bx, by, bz }] = SGCore::MakeRef<BlockData>();
                     }
                 }
@@ -86,9 +94,9 @@ void OceansEdge::World::buildChunksGrid
     std::unordered_set<lvec2, SGCore::MathUtils::GLMVectorHash<lvec2>> tmpOccupiedIndices;
     
     size_t curEntityIdx = 0;
-    for(long cx = playerChunk.x - Settings::s_drawingRange / 2; cx < playerChunk.x + Settings::s_drawingRange / 2; ++cx)
+    for(long cx = playerChunk.x - Settings::s_drawingRange; cx < playerChunk.x + Settings::s_drawingRange; ++cx)
     {
-        for(long cy = playerChunk.y - Settings::s_drawingRange / 2; cy < playerChunk.y + Settings::s_drawingRange / 2; ++cy)
+        for(long cy = playerChunk.y - Settings::s_drawingRange; cy < playerChunk.y + Settings::s_drawingRange; ++cy)
         {
             tmpOccupiedIndices.insert(lvec2 { cx, cy });
         }
@@ -132,6 +140,7 @@ void OceansEdge::World::buildChunksGrid
                                  { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);*/
             
             const long endX = Settings::s_chunksSize.x;
+            // const long endY = Settings::s_chunksSize.y;
             const long endZ = Settings::s_chunksSize.z;
             
             chunk->m_vertices.clear();
@@ -142,16 +151,20 @@ void OceansEdge::World::buildChunksGrid
             {
                 for(long z = 0; z < endZ; ++z)
                 {
-                    float rawY = m_perlinNoise.octave2D_01((chunkPosition.x + x) * 0.03, (chunkPosition.z + z) * 0.03, 1);
-                    float by = std::floor(rawY * 50);
-                    
-                    const long endY = std::min<long>(std::ceil(Settings::s_chunksSize.y / 2) + by, Settings::s_chunksSize.y);
-                    
-                    for(long y = 0; y < endY; ++y)
+                    if(m_yDirDistribution(m_yDirDistributionRange) == 0)
                     {
-                        auto& blockData = chunk->m_blocks[x][y][z];
-                        
-                        blockData.m_type = BlocksTypes::OEB_MUD_WITH_GRASS;
+                        m_yDir += 0.015;
+                    }
+                    else
+                    {
+                        m_yDir -= 0.015;
+                    }
+                    
+                    m_chunkTmpYMaximums[x][z] = 0;
+                    
+                    for(long y = 0; y < Settings::s_chunksSize.y; ++y)
+                    {
+                        m_chunkTmpBlocks[x][y][z] = BlocksTypes::OEB_AIR;
                     }
                 }
             }
@@ -160,12 +173,29 @@ void OceansEdge::World::buildChunksGrid
             {
                 for(long z = 0; z < endZ; ++z)
                 {
-                    float rawY = m_perlinNoise.octave2D_01((chunkPosition.x + x) * 0.03, (chunkPosition.z + z) * 0.03, 1);
-                    float by = std::floor(rawY * 50);
+                    double rawY = m_perlinNoise.octave2D_01((chunkPosition.x + (float) x) * m_yDir, (chunkPosition.z + (float) z) * m_yDir, 1, 0.01);
+                    double by = rawY * 50;
                     
-                    const long endY = std::min<long>(std::ceil(Settings::s_chunksSize.y / 2) + by, Settings::s_chunksSize.y);
+                    const long endY = std::clamp<long>(std::ceil(Settings::s_chunksSize.y / 2 + by), 1, Settings::s_chunksSize.y - 1);
                     
-                    for(long y = 0; y < endY; ++y)
+                    m_chunkTmpYMaximums[x][z] = endY; // rand() % 10;
+                    
+                    for(long y = endY - 1; y < endY; ++y)
+                    {
+                        auto& blockData = m_chunkTmpBlocks[x][y][z]; // chunk->m_blocks[x][y][z];
+                        
+                        blockData = BlocksTypes::OEB_MUD_WITH_GRASS;
+                    }
+                }
+            }
+            
+            for(long x = 0; x < endX; ++x)
+            {
+                for(long z = 0; z < endZ; ++z)
+                {
+                    const long endY = m_chunkTmpYMaximums[x][z];
+                    
+                    for(long y = endY - 1; y < endY; ++y)
                     {
                         long px = std::min(endX - 1, x + 1);
                         long mx = std::max<long>(0, x - 1);
@@ -174,32 +204,39 @@ void OceansEdge::World::buildChunksGrid
                         long py = std::min(endY - 1, y + 1);
                         long my = std::max<long>(0, y - 1);
                         
-                        vec3_8 blockPos = { x, y, z };
+                        ivec3_32 blockPos = { x, y, z };
                         
-                        const auto& pxBD = chunk->m_blocks[px][y][z];
+                        /*const auto& pxBD = chunk->m_blocks[px][y][z];
                         const auto& mxBD = chunk->m_blocks[mx][y][z];
                         const auto& pyBD = chunk->m_blocks[x][py][z];
                         const auto& myBD = chunk->m_blocks[x][my][z];
                         const auto& pzBD = chunk->m_blocks[x][y][pz];
-                        const auto& mzBD = chunk->m_blocks[x][y][mz];
+                        const auto& mzBD = chunk->m_blocks[x][y][mz];*/
                         
-                        if(pyBD.m_type == BlocksTypes::OEB_AIR || y == endY - 1)
+                        const auto& pxBD = m_chunkTmpBlocks[px][y][z];
+                        const auto& mxBD = m_chunkTmpBlocks[mx][y][z];
+                        const auto& pyBD = m_chunkTmpBlocks[x][py][z];
+                        const auto& myBD = m_chunkTmpBlocks[x][my][z];
+                        const auto& pzBD = m_chunkTmpBlocks[x][y][pz];
+                        const auto& mzBD = m_chunkTmpBlocks[x][y][mz];
+                        
+                        if(pyBD == BlocksTypes::OEB_AIR || py == y)
                         {
                             addBlockTopSideVertices(blockPos, chunk);
                         }
-                        if(pxBD.m_type == BlocksTypes::OEB_AIR || x == endX - 1 )
+                        if(pxBD == BlocksTypes::OEB_AIR)
                         {
                             addBlockRightSideVertices(blockPos, chunk);
                         }
-                        if(mxBD.m_type == BlocksTypes::OEB_AIR || x == 0)
+                        if(mxBD == BlocksTypes::OEB_AIR)
                         {
                             addBlockLeftSideVertices(blockPos, chunk);
                         }
-                        if(pzBD.m_type == BlocksTypes::OEB_AIR || z == endZ - 1)
+                        if(pzBD == BlocksTypes::OEB_AIR)
                         {
                             addBlockFaceSideVertices(blockPos, chunk);
                         }
-                        if(mzBD.m_type == BlocksTypes::OEB_AIR || z == 0)
+                        if(mzBD == BlocksTypes::OEB_AIR)
                         {
                             addBlockBackSideVertices(blockPos, chunk);
                         }
@@ -218,45 +255,45 @@ void OceansEdge::World::buildChunksGrid
     }
 }
 
-void OceansEdge::World::addBlockTopSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    vec3_8 ld = { blockPos.x, blockPos.y + 1, blockPos.z };
-    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
-    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
-    vec3_8 rd = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
+    if(!chunk->isBuffersHaveFreeSpace()) return;
     
-    // std::cout << std::to_string(ld.x) << ", " << std::to_string(ld.y) << ", " << std::to_string(ld.z) << std::endl;
+    ivec3_32 ld = { blockPos.x, blockPos.y + 1, blockPos.z };
+    ivec3_32 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
+    ivec3_32 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
+    ivec3_32 rd = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
     
     int face = 0;
     
     int ldData = 0;
-    ldData |= ldData | ld.x;
-    ldData |= ldData | (ld.y << 6);
-    ldData |= ldData | (ld.z << 12);
-    ldData |= ldData | (face << 18);
+    ldData |= ld.x;
+    ldData |= ld.z << 6;
+    ldData |= face << 12;
     
     int ltData = 0;
-    ltData |= ltData | lt.x;
-    ltData |= ltData | (lt.y << 6);
-    ltData |= ltData | (lt.z << 12);
-    ltData |= ltData | (face << 18);
+    ltData |= lt.x;
+    ltData |= lt.z << 6;
+    ltData |= face << 12;
     
     int rtData = 0;
-    rtData |= rtData | rt.x;
-    rtData |= rtData | (rt.y << 6);
-    rtData |= rtData | (rt.z << 12);
-    rtData |= rtData | (face << 18);
+    rtData |= rt.x;
+    rtData |= rt.z << 6;
+    rtData |= face << 12;
     
     int rdData = 0;
-    rdData |= rdData | rd.x;
-    rdData |= rdData | (rd.y << 6);
-    rdData |= rdData | (rd.z << 12);
-    rdData |= rdData | (face << 18);
+    rdData |= rd.x;
+    rdData |= rd.z << 6;
+    rdData |= face << 12;
     
     chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ld.y);
     chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(lt.y);
     chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rt.y);
     chunk->m_vertices.push_back(rdData);
+    chunk->m_vertices.push_back(rd.y);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -268,43 +305,45 @@ void OceansEdge::World::addBlockTopSideVertices(const vec3_8& blockPos, const SG
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockBottomSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockBottomSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z };
-    vec3_8 lt = { blockPos.x, blockPos.y, blockPos.z + 1 };
-    vec3_8 rt = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
-    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z };
+    if(!chunk->isBuffersHaveFreeSpace()) return;
+    
+    ivec3_32 ld = { blockPos.x, blockPos.y, blockPos.z };
+    ivec3_32 lt = { blockPos.x, blockPos.y, blockPos.z + 1 };
+    ivec3_32 rt = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
+    ivec3_32 rd = { blockPos.x + 1, blockPos.y, blockPos.z };
     
     int face = 1;
     
     int ldData = 0;
-    ldData |= ldData | ld.x;
-    ldData |= ldData | (ld.y << 6);
-    ldData |= ldData | (ld.z << 12);
-    ldData |= ldData | (face << 18);
+    ldData |= ld.x;
+    ldData |= ld.z << 6;
+    ldData |= face << 12;
     
     int ltData = 0;
-    ltData |= ltData | lt.x;
-    ltData |= ltData | (lt.y << 6);
-    ltData |= ltData | (lt.z << 12);
-    ltData |= ltData | (face << 18);
+    ltData |= lt.x;
+    ltData |= lt.z << 6;
+    ltData |= face << 12;
     
     int rtData = 0;
-    rtData |= rtData | rt.x;
-    rtData |= rtData | (rt.y << 6);
-    rtData |= rtData | (rt.z << 12);
-    rtData |= rtData | (face << 18);
+    rtData |= rt.x;
+    rtData |= rt.z << 6;
+    rtData |= face << 12;
     
     int rdData = 0;
-    rdData |= rdData | rd.x;
-    rdData |= rdData | (rd.y << 6);
-    rdData |= rdData | (rd.z << 12);
-    rdData |= rdData | (face << 18);
+    rdData |= rd.x;
+    rdData |= rd.z << 6;
+    rdData |= face << 12;
     
     chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ld.y);
     chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(lt.y);
     chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rt.y);
     chunk->m_vertices.push_back(rdData);
+    chunk->m_vertices.push_back(rd.y);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -316,43 +355,45 @@ void OceansEdge::World::addBlockBottomSideVertices(const vec3_8& blockPos, const
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockFaceSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z + 1 };
-    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
-    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
-    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
+    if(!chunk->isBuffersHaveFreeSpace()) return;
+    
+    ivec3_32 ld = { blockPos.x, blockPos.y, blockPos.z + 1 };
+    ivec3_32 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
+    ivec3_32 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
+    ivec3_32 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
     
     int face = 4;
     
     int ldData = 0;
-    ldData |= ldData | ld.x;
-    ldData |= ldData | (ld.y << 6);
-    ldData |= ldData | (ld.z << 12);
-    ldData |= ldData | (face << 18);
+    ldData |= ld.x;
+    ldData |= ld.z << 6;
+    ldData |= face << 12;
     
     int ltData = 0;
-    ltData |= ltData | lt.x;
-    ltData |= ltData | (lt.y << 6);
-    ltData |= ltData | (lt.z << 12);
-    ltData |= ltData | (face << 18);
+    ltData |= lt.x;
+    ltData |= lt.z << 6;
+    ltData |= face << 12;
     
     int rtData = 0;
-    rtData |= rtData | rt.x;
-    rtData |= rtData | (rt.y << 6);
-    rtData |= rtData | (rt.z << 12);
-    rtData |= rtData | (face << 18);
+    rtData |= rt.x;
+    rtData |= rt.z << 6;
+    rtData |= face << 12;
     
     int rdData = 0;
-    rdData |= rdData | rd.x;
-    rdData |= rdData | (rd.y << 6);
-    rdData |= rdData | (rd.z << 12);
-    rdData |= rdData | (face << 18);
+    rdData |= rd.x;
+    rdData |= rd.z << 6;
+    rdData |= face << 12;
     
     chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ld.y);
     chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(lt.y);
     chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rt.y);
     chunk->m_vertices.push_back(rdData);
+    chunk->m_vertices.push_back(rd.y);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -364,43 +405,45 @@ void OceansEdge::World::addBlockFaceSideVertices(const vec3_8& blockPos, const S
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockBackSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockBackSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z };
-    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z };
-    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
-    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z };
+    if(!chunk->isBuffersHaveFreeSpace()) return;
+    
+    ivec3_32 ld = { blockPos.x, blockPos.y, blockPos.z };
+    ivec3_32 lt = { blockPos.x, blockPos.y + 1, blockPos.z };
+    ivec3_32 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
+    ivec3_32 rd = { blockPos.x + 1, blockPos.y, blockPos.z };
     
     int face = 5;
     
     int ldData = 0;
-    ldData |= ldData | ld.x;
-    ldData |= ldData | (ld.y << 6);
-    ldData |= ldData | (ld.z << 12);
-    ldData |= ldData | (face << 18);
+    ldData |= ld.x;
+    ldData |= ld.z << 6;
+    ldData |= face << 12;
     
     int ltData = 0;
-    ltData |= ltData | lt.x;
-    ltData |= ltData | (lt.y << 6);
-    ltData |= ltData | (lt.z << 12);
-    ltData |= ltData | (face << 18);
+    ltData |= lt.x;
+    ltData |= lt.z << 6;
+    ltData |= face << 12;
     
     int rtData = 0;
-    rtData |= rtData | rt.x;
-    rtData |= rtData | (rt.y << 6);
-    rtData |= rtData | (rt.z << 12);
-    rtData |= rtData | (face << 18);
+    rtData |= rt.x;
+    rtData |= rt.z << 6;
+    rtData |= face << 12;
     
     int rdData = 0;
-    rdData |= rdData | rd.x;
-    rdData |= rdData | (rd.y << 6);
-    rdData |= rdData | (rd.z << 12);
-    rdData |= rdData | (face << 18);
+    rdData |= rd.x;
+    rdData |= rd.z << 6;
+    rdData |= face << 12;
     
     chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ld.y);
     chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(lt.y);
     chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rt.y);
     chunk->m_vertices.push_back(rdData);
+    chunk->m_vertices.push_back(rd.y);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -412,43 +455,47 @@ void OceansEdge::World::addBlockBackSideVertices(const vec3_8& blockPos, const S
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockLeftSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    vec3_8 ld = { blockPos.x, blockPos.y, blockPos.z };
-    vec3_8 lt = { blockPos.x, blockPos.y + 1, blockPos.z };
-    vec3_8 rt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
-    vec3_8 rd = { blockPos.x, blockPos.y, blockPos.z + 1 };
+    if(!chunk->isBuffersHaveFreeSpace()) return;
+    
+    ivec3_32 ld = { blockPos.x, blockPos.y, blockPos.z };
+    ivec3_32 lt = { blockPos.x, blockPos.y + 1, blockPos.z };
+    ivec3_32 rt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
+    ivec3_32 rd = { blockPos.x, blockPos.y, blockPos.z + 1 };
+    
+    // std::cout << std::to_string(ld.x) << ", " << std::to_string(ld.y) << ", " << std::to_string(ld.z) << std::endl;
     
     int face = 3;
     
     int ldData = 0;
-    ldData |= ldData | ld.x;
-    ldData |= ldData | (ld.y << 6);
-    ldData |= ldData | (ld.z << 12);
-    ldData |= ldData | (face << 18);
+    ldData |= ld.x;
+    ldData |= ld.z << 6;
+    ldData |= face << 12;
     
     int ltData = 0;
-    ltData |= ltData | lt.x;
-    ltData |= ltData | (lt.y << 6);
-    ltData |= ltData | (lt.z << 12);
-    ltData |= ltData | (face << 18);
+    ltData |= lt.x;
+    ltData |= lt.z << 6;
+    ltData |= face << 12;
     
     int rtData = 0;
-    rtData |= rtData | rt.x;
-    rtData |= rtData | (rt.y << 6);
-    rtData |= rtData | (rt.z << 12);
-    rtData |= rtData | (face << 18);
+    rtData |= rt.x;
+    rtData |= rt.z << 6;
+    rtData |= face << 12;
     
     int rdData = 0;
-    rdData |= rdData | rd.x;
-    rdData |= rdData | (rd.y << 6);
-    rdData |= rdData | (rd.z << 12);
-    rdData |= rdData | (face << 18);
+    rdData |= rd.x;
+    rdData |= rd.z << 6;
+    rdData |= face << 12;
     
     chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ld.y);
     chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(lt.y);
     chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rt.y);
     chunk->m_vertices.push_back(rdData);
+    chunk->m_vertices.push_back(rd.y);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
@@ -460,43 +507,45 @@ void OceansEdge::World::addBlockLeftSideVertices(const vec3_8& blockPos, const S
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockRightSideVertices(const vec3_8& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockRightSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
 {
-    vec3_8 ld = { blockPos.x + 1, blockPos.y, blockPos.z };
-    vec3_8 lt = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
-    vec3_8 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
-    vec3_8 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
+    if(!chunk->isBuffersHaveFreeSpace()) return;
+    
+    ivec3_32 ld = { blockPos.x + 1, blockPos.y, blockPos.z };
+    ivec3_32 lt = { blockPos.x + 1, blockPos.y + 1, blockPos.z };
+    ivec3_32 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
+    ivec3_32 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
     
     int face = 2;
     
     int ldData = 0;
-    ldData |= ldData | ld.x;
-    ldData |= ldData | (ld.y << 6);
-    ldData |= ldData | (ld.z << 12);
-    ldData |= ldData | (face << 18);
+    ldData |= ld.x;
+    ldData |= ld.z << 6;
+    ldData |= face << 12;
     
     int ltData = 0;
-    ltData |= ltData | lt.x;
-    ltData |= ltData | (lt.y << 6);
-    ltData |= ltData | (lt.z << 12);
-    ltData |= ltData | (face << 18);
+    ltData |= lt.x;
+    ltData |= lt.z << 6;
+    ltData |= face << 12;
     
     int rtData = 0;
-    rtData |= rtData | rt.x;
-    rtData |= rtData | (rt.y << 6);
-    rtData |= rtData | (rt.z << 12);
-    rtData |= rtData | (face << 18);
+    rtData |= rt.x;
+    rtData |= rt.z << 6;
+    rtData |= face << 12;
     
     int rdData = 0;
-    rdData |= rdData | rd.x;
-    rdData |= rdData | (rd.y << 6);
-    rdData |= rdData | (rd.z << 12);
-    rdData |= rdData | (face << 18);
+    rdData |= rd.x;
+    rdData |= rd.z << 6;
+    rdData |= face << 12;
     
     chunk->m_vertices.push_back(ldData);
+    chunk->m_vertices.push_back(ld.y);
     chunk->m_vertices.push_back(ltData);
+    chunk->m_vertices.push_back(lt.y);
     chunk->m_vertices.push_back(rtData);
+    chunk->m_vertices.push_back(rt.y);
     chunk->m_vertices.push_back(rdData);
+    chunk->m_vertices.push_back(rd.y);
     
     chunk->m_indices.push_back(chunk->m_currentIndex + 0);
     chunk->m_indices.push_back(chunk->m_currentIndex + 1);
