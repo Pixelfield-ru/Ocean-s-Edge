@@ -147,44 +147,38 @@ void OceansEdge::World::buildChunksGrid
             chunk->m_indices.clear();
             chunk->m_currentIndex = 0;
             
-            for(long x = 0; x < endX; ++x)
+            /*if(m_yDirDistribution(m_yDirDistributionRange) == 0)
             {
-                for(long z = 0; z < endZ; ++z)
-                {
-                    if(m_yDirDistribution(m_yDirDistributionRange) == 0)
-                    {
-                        m_yDir += 0.015;
-                    }
-                    else
-                    {
-                        m_yDir -= 0.015;
-                    }
-                    
-                    m_chunkTmpYMaximums[x][z] = 0;
-                    
-                    for(long y = 0; y < Settings::s_chunksSize.y; ++y)
-                    {
-                        m_chunkTmpBlocks[x][y][z] = BlocksTypes::OEB_AIR;
-                    }
-                }
+                m_yDir += 0.0015;
             }
+            else
+            {
+                m_yDir -= 0.0015;
+            }*/
             
             for(long x = 0; x < endX; ++x)
             {
                 for(long z = 0; z < endZ; ++z)
                 {
-                    double rawY = m_perlinNoise.octave2D_01((chunkPosition.x + (float) x) * m_yDir, (chunkPosition.z + (float) z) * m_yDir, 1, 0.01);
-                    double by = rawY * 50;
+                    double rawY = m_perlinNoise.octave2D_11((chunkPosition.x + (float) x) * 0.01, (chunkPosition.z + (float) z) * 0.01, 2);
+                    double by = rawY * 50; // * interpolate(chunkPosition.x + (float) x, chunkPosition.z + (float) z, rawY) * 0.01;
                     
                     const long endY = std::clamp<long>(std::ceil(Settings::s_chunksSize.y / 2 + by), 1, Settings::s_chunksSize.y - 1);
                     
-                    m_chunkTmpYMaximums[x][z] = endY; // rand() % 10;
+                    m_chunkTmpYMaximums[x][z] = endY;
                     
-                    for(long y = endY - 1; y < endY; ++y)
+                    for(long y = 0; y < Settings::s_chunksSize.y; ++y)
                     {
                         auto& blockData = m_chunkTmpBlocks[x][y][z]; // chunk->m_blocks[x][y][z];
                         
-                        blockData = BlocksTypes::OEB_MUD_WITH_GRASS;
+                        if(y < endY)
+                        {
+                            blockData = BlocksTypes::OEB_MUD_WITH_GRASS;
+                        }
+                        else
+                        {
+                            m_chunkTmpBlocks[x][y][z] = BlocksTypes::OEB_AIR;
+                        }
                     }
                 }
             }
@@ -193,25 +187,32 @@ void OceansEdge::World::buildChunksGrid
             {
                 for(long z = 0; z < endZ; ++z)
                 {
-                    const long endY = m_chunkTmpYMaximums[x][z];
+                    long px = std::min(endX - 1, x + 1);
+                    long mx = std::max<long>(0, x - 1);
+                    long pz = std::min(endZ - 1, z + 1);
+                    long mz = std::max<long>(0, z - 1);
                     
-                    for(long y = endY - 1; y < endY; ++y)
+                    const long curY = m_chunkTmpYMaximums[x][z];
+                    const long pxMaxY = m_chunkTmpYMaximums[px][z];
+                    const long mxMaxY = m_chunkTmpYMaximums[mx][z];
+                    const long pzMaxY = m_chunkTmpYMaximums[x][pz];
+                    const long mzMaxY = m_chunkTmpYMaximums[x][mz];
+                    
+                    long minMaxY = pxMaxY;
+                    minMaxY = std::min(std::min(std::min(minMaxY, mxMaxY), pzMaxY), mzMaxY);
+                    if(minMaxY > curY)
                     {
-                        long px = std::min(endX - 1, x + 1);
-                        long mx = std::max<long>(0, x - 1);
-                        long pz = std::min(endZ - 1, z + 1);
-                        long mz = std::max<long>(0, z - 1);
-                        long py = std::min(endY - 1, y + 1);
+                        minMaxY = curY;
+                    }
+                    
+                    --minMaxY;
+                    
+                    for(long y = minMaxY; y < curY; ++y)
+                    {
+                        long py = std::min(curY, y + 1);
                         long my = std::max<long>(0, y - 1);
                         
                         ivec3_32 blockPos = { x, y, z };
-                        
-                        /*const auto& pxBD = chunk->m_blocks[px][y][z];
-                        const auto& mxBD = chunk->m_blocks[mx][y][z];
-                        const auto& pyBD = chunk->m_blocks[x][py][z];
-                        const auto& myBD = chunk->m_blocks[x][my][z];
-                        const auto& pzBD = chunk->m_blocks[x][y][pz];
-                        const auto& mzBD = chunk->m_blocks[x][y][mz];*/
                         
                         const auto& pxBD = m_chunkTmpBlocks[px][y][z];
                         const auto& mxBD = m_chunkTmpBlocks[mx][y][z];
@@ -220,7 +221,7 @@ void OceansEdge::World::buildChunksGrid
                         const auto& pzBD = m_chunkTmpBlocks[x][y][pz];
                         const auto& mzBD = m_chunkTmpBlocks[x][y][mz];
                         
-                        if(pyBD == BlocksTypes::OEB_AIR || py == y)
+                        if(pyBD == BlocksTypes::OEB_AIR)
                         {
                             addBlockTopSideVertices(blockPos, chunk);
                         }
@@ -288,10 +289,13 @@ void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const 
     
     chunk->m_vertices.push_back(ldData);
     chunk->m_vertices.push_back(ld.y);
+    
     chunk->m_vertices.push_back(ltData);
     chunk->m_vertices.push_back(lt.y);
+    
     chunk->m_vertices.push_back(rtData);
     chunk->m_vertices.push_back(rt.y);
+    
     chunk->m_vertices.push_back(rdData);
     chunk->m_vertices.push_back(rd.y);
     
@@ -338,10 +342,13 @@ void OceansEdge::World::addBlockBottomSideVertices(const ivec3_32& blockPos, con
     
     chunk->m_vertices.push_back(ldData);
     chunk->m_vertices.push_back(ld.y);
+    
     chunk->m_vertices.push_back(ltData);
     chunk->m_vertices.push_back(lt.y);
+    
     chunk->m_vertices.push_back(rtData);
     chunk->m_vertices.push_back(rt.y);
+    
     chunk->m_vertices.push_back(rdData);
     chunk->m_vertices.push_back(rd.y);
     
@@ -363,6 +370,9 @@ void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const
     ivec3_32 lt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
     ivec3_32 rt = { blockPos.x + 1, blockPos.y + 1, blockPos.z + 1 };
     ivec3_32 rd = { blockPos.x + 1, blockPos.y, blockPos.z + 1 };
+    
+    //                          13  12  11  10   9   8   7   6   5   4   3   2   1   0
+    // | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
     
     int face = 4;
     
@@ -388,10 +398,13 @@ void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const
     
     chunk->m_vertices.push_back(ldData);
     chunk->m_vertices.push_back(ld.y);
+    
     chunk->m_vertices.push_back(ltData);
     chunk->m_vertices.push_back(lt.y);
+    
     chunk->m_vertices.push_back(rtData);
     chunk->m_vertices.push_back(rt.y);
+    
     chunk->m_vertices.push_back(rdData);
     chunk->m_vertices.push_back(rd.y);
     
@@ -438,10 +451,13 @@ void OceansEdge::World::addBlockBackSideVertices(const ivec3_32& blockPos, const
     
     chunk->m_vertices.push_back(ldData);
     chunk->m_vertices.push_back(ld.y);
+    
     chunk->m_vertices.push_back(ltData);
     chunk->m_vertices.push_back(lt.y);
+    
     chunk->m_vertices.push_back(rtData);
     chunk->m_vertices.push_back(rt.y);
+    
     chunk->m_vertices.push_back(rdData);
     chunk->m_vertices.push_back(rd.y);
     
@@ -464,7 +480,7 @@ void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const
     ivec3_32 rt = { blockPos.x, blockPos.y + 1, blockPos.z + 1 };
     ivec3_32 rd = { blockPos.x, blockPos.y, blockPos.z + 1 };
     
-    // std::cout << std::to_string(ld.x) << ", " << std::to_string(ld.y) << ", " << std::to_string(ld.z) << std::endl;
+    // std::cout << std::to_string(rt.x) << ", " << std::to_string(rt.y) << ", " << std::to_string(rt.z) << std::endl;
     
     int face = 3;
     
@@ -490,10 +506,13 @@ void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const
     
     chunk->m_vertices.push_back(ldData);
     chunk->m_vertices.push_back(ld.y);
+    
     chunk->m_vertices.push_back(ltData);
     chunk->m_vertices.push_back(lt.y);
+    
     chunk->m_vertices.push_back(rtData);
     chunk->m_vertices.push_back(rt.y);
+    
     chunk->m_vertices.push_back(rdData);
     chunk->m_vertices.push_back(rd.y);
     
@@ -540,10 +559,13 @@ void OceansEdge::World::addBlockRightSideVertices(const ivec3_32& blockPos, cons
     
     chunk->m_vertices.push_back(ldData);
     chunk->m_vertices.push_back(ld.y);
+    
     chunk->m_vertices.push_back(ltData);
     chunk->m_vertices.push_back(lt.y);
+    
     chunk->m_vertices.push_back(rtData);
     chunk->m_vertices.push_back(rt.y);
+    
     chunk->m_vertices.push_back(rdData);
     chunk->m_vertices.push_back(rd.y);
     

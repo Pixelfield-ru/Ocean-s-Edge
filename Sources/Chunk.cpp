@@ -74,17 +74,7 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     subPassShader->bind();
     
-    if(m_needsSubData && m_vertices.size() / 2 >= verticesCount)
-    {
-        m_positionsVertexBuffer->bind();
-        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount * 2, 0);
-    }
-    
-    if(m_needsSubData && m_indices.size() >= indicesCount)
-    {
-        m_indicesBuffer->bind();
-        m_indicesBuffer->subData(m_indices.data(), indicesCount, 0);
-    }
+    // m_vertexArray->bind();
     
     auto atmosphereUpdater = scene->getSystem<AtmosphereUpdater>();
     
@@ -108,6 +98,18 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
                                              verticesCount,
                                              indicesCount);
     });
+    
+    if(m_needsSubData && m_vertices.size() >= verticesCount * 2)
+    {
+        m_positionsVertexBuffer->bind();
+        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount * 2, 0);
+    }
+    
+    if(m_needsSubData && m_indices.size() >= indicesCount)
+    {
+        m_indicesBuffer->bind();
+        m_indicesBuffer->subData(m_indices.data(), indicesCount, 0);
+    }
     
     m_needsSubData = false;
 }

@@ -31,6 +31,12 @@ namespace OceansEdge
         
         void buildChunksGrid(const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed);
     private:
+        float interpolate(float from, float to, float percent)
+        {
+            float difference = to - from;
+            return from + (difference * percent);
+        }
+        
         std::uniform_int_distribution<std::mt19937::result_type> m_yDirDistribution;
         std::mt19937 m_yDirDistributionRange;
         float m_yDir = 0;
