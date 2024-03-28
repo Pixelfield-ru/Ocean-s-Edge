@@ -33,7 +33,7 @@ namespace OceansEdge
         // blocks_container_t m_blocks;
         
         std::vector<std::uint32_t> m_indices;
-        std::vector<int> m_vertices;
+        std::vector<std::int32_t> m_vertices;
         
         glm::vec3 m_position { 0, 0, 0 };
         
@@ -45,17 +45,17 @@ namespace OceansEdge
         size_t m_currentIndex = 0;
         
         bool m_needsSubData = false;
-        
-        const size_t m_maxVerticesCount = 250'000;
-        const size_t m_maxIndicesCount = 250'000 + (m_maxVerticesCount / 3) + 10;
+
+        const size_t m_maxVerticesCount = 150'000;
+        const size_t m_maxIndicesCount = m_maxVerticesCount + (m_maxVerticesCount / 3) + 10;
         
         bool isBuffersHaveFreeSpace() const noexcept;
-        
+
+        void onRenderPipelineSet() noexcept;
+
         SGCore::EventListener<void()> m_onRenderPipelineSetEventListener = SGCore::MakeEventListener<void()>([this]() {
             onRenderPipelineSet();
         });
-        
-        void onRenderPipelineSet() noexcept;
         
         SGCore::Ref<SGCore::IShader> m_shader;
     };

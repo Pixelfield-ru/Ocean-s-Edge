@@ -31,7 +31,7 @@ OceansEdge::Chunk::Chunk()
                 CoreMain::getRenderer()->createVertexBuffer()
         );
         
-        m_positionsVertexBuffer->setUsage(SGG_STATIC)->create(m_maxVerticesCount * 2 * sizeof(int))->bind();
+        m_positionsVertexBuffer->setUsage(SGG_DYNAMIC)->create(m_maxVerticesCount * 2 * sizeof(int))->bind();
         
         bufferLayout->reset()
                 ->addAttribute(Ref<IVertexAttribute>(
@@ -43,7 +43,7 @@ OceansEdge::Chunk::Chunk()
                 ->prepare()->enableAttributes();
         
         m_indicesBuffer = Ref<IIndexBuffer>(CoreMain::getRenderer()->createIndexBuffer());
-        m_indicesBuffer->setUsage(SGG_STATIC)->create(m_maxIndicesCount * sizeof(int));
+        m_indicesBuffer->setUsage(SGG_DYNAMIC)->create(m_maxIndicesCount * sizeof(int));
     }
     
     m_renderInfo.m_useIndices = true;

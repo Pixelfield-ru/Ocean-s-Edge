@@ -29,7 +29,7 @@ namespace OceansEdge
     class Settings
     {
     public:
-        static inline long s_drawingRange = 20;
+        static inline long s_drawingRange = 5;
         static inline lvec3 s_chunksSize { 62, 1024, 62 };
         
         static void init()

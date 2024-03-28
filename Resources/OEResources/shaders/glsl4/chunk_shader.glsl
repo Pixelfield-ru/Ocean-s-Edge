@@ -1,6 +1,6 @@
 #sg_pragma once
 
-#sg_include "../../../SGResources/shaders/glsl4/uniform_bufs_decl.glsl"
+#sg_include "fog_calc.glsl"
 
 struct VS_OUT
 {
@@ -58,7 +58,9 @@ SGSubPass(ChunksPass)
             float diff = max(dot(vsOut.normal, lightDir), 0.0);
             vec3 diffuse = diff * atmosphere.sunColor * vec3(0.0, 1.0, 0.0);
 
-            fragColor = vec4(diffuse, 1.0);
+            vec3 finalCol = clamp(diffuse * calculateFog(vsOut.vertexPosition), vec3(0.1), vec3(1.0));
+
+            fragColor = vec4(finalCol, 1.0);
         }
     }
 }

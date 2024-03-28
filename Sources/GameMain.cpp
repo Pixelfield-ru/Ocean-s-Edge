@@ -1,6 +1,18 @@
-//
-// Created by ilya on 16.02.24.
-//
+#include "SGUtils/CrashHandler/Platform.h"
+
+#ifdef PLATFORM_OS_WINDOWS
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <windows.h>
+    __declspec(dllexport) DWORD NvOptimusEnablement = 1;
+    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+#include <SGUtils/CrashHandler/Platform.h>
 
 #include <entt/entity/entity.hpp>
 #include <SGCore/Render/PostProcessFrameReceiver.h>
@@ -299,9 +311,9 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
     
     SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
     
-    SGCore::ImGuiWrap::ImGuiLayer::beginFrame();
+    // SGCore::ImGuiWrap::ImGuiLayer::beginFrame();
     
-    ImGui::Begin("ECS Systems Stats");
+    /*ImGui::Begin("ECS Systems Stats");
     {
         if(ImGui::BeginTable("SystemsStats", 5))
         {
@@ -359,13 +371,13 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
         ImGui::Text("Render total execution: %f", t2 + t3);
         ImGui::Text("Total frame time: %f", t0 + t1 + t2 + t3);
     }
-    ImGui::End();
-    
+    ImGui::End();*/
+
     SGCore::Scene::getCurrentScene()->update(dt, fixedDt);
-    
+
     m_world->render(m_worldScene);
-    
-    SGCore::ImGuiWrap::ImGuiLayer::endFrame();
+
+    // SGCore::ImGuiWrap::ImGuiLayer::endFrame();
 }
 
 int main()

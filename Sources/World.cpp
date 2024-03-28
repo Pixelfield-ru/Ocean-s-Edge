@@ -244,7 +244,7 @@ void OceansEdge::World::buildChunksGrid
                     }
                 }
             }
-            
+
             chunk->m_needsSubData = true;
             
             // std::cout << "polygons count : " << (chunk->m_polygons.size() / 3) << std::endl;
