@@ -44,7 +44,7 @@ namespace OceansEdge
         
         size_t m_currentIndex = 0;
         
-        bool m_needsSubData = false;
+        std::atomic<bool> m_needsSubData = false;
 
         const size_t m_maxVerticesCount = 150'000;
         const size_t m_maxIndicesCount = m_maxVerticesCount + (m_maxVerticesCount / 3) + 10;

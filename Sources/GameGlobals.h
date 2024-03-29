@@ -29,12 +29,13 @@ namespace OceansEdge
     class Settings
     {
     public:
-        static inline long s_drawingRange = 5;
+        static inline long s_drawingRange = 8;
         static inline lvec3 s_chunksSize { 62, 1024, 62 };
         
         static void init()
         {
             m_shadersPaths["ChunkShader"].m_GLSL4RealizationPath = "../OEResources/shaders/glsl4/chunk_shader.glsl";
+            m_shadersPaths["FoggedSkyboxShader"].m_GLSL4RealizationPath = "../OEResources/shaders/glsl4/fogged_skybox.glsl";
         }
         
         static auto& getShadersPaths() noexcept

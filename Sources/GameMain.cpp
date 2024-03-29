@@ -1,3 +1,4 @@
+#include "WorldChunksUpdater.h"
 #include "SGUtils/CrashHandler/Platform.h"
 
 #ifdef PLATFORM_OS_WINDOWS
@@ -52,7 +53,7 @@ extern "C" {
 #include "BlocksTypes.h"
 #include "Atlas.h"
 #include "World.h"
-#include "Player.h"
+#include "LocalPlayer.h"
 
 SGCore::Ref<SGCore::Transform> chunk0Transform;
 SGCore::Ref<SGCore::Transform> playerTransform;
@@ -86,8 +87,10 @@ void OceansEdge::GameMain::init()
     SGCore::Scene::setCurrentScene("WorldScene");
     
     auto dayNightCycleSystem = SGCore::MakeRef<DayNightCycleSystem>();
+    auto worldChunksUpdater = SGCore::MakeRef<WorldChunksUpdater>();
     dayNightCycleSystem->setScene(m_worldScene);
     m_worldScene->addSystem(dayNightCycleSystem);
+    m_worldScene->addSystem(worldChunksUpdater);
     
     // -----------------------------------------------------------
     
@@ -163,10 +166,11 @@ void OceansEdge::GameMain::init()
     auto testCameraEntity = m_worldScene->getECSRegistry().create();
     SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
-    m_worldScene->getECSRegistry().emplace<Player>(testCameraEntity);
+    m_worldScene->getECSRegistry().emplace<LocalPlayer>(testCameraEntity);
     
     playerTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
-    
+    playerTransform->m_ownTransform.m_position = { 0.0, 500, 0 };
+
     auto& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Camera3D>>(testCameraEntity,
             SGCore::MakeRef<SGCore::Camera3D>());
     SGCore::Controllable3D& cameraEntityControllable = m_worldScene->getECSRegistry().emplace<SGCore::Controllable3D>(testCameraEntity);
@@ -191,9 +195,15 @@ void OceansEdge::GameMain::init()
         /*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
                                                                standardCubemap
         );*/
-        
+
+
+
         //skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
-        SGCore::ShadersUtils::loadShader(shaderComponent, "SkyboxShader");
+        shaderComponent.m_shader->addSubPassShadersAndCompile(
+            SGCore::AssetManager::loadAsset<SGCore::FileAsset>(
+                Settings::getShadersPaths()["FoggedSkyboxShader"].getCurrentRealization()));
+        shaderComponent.m_isCustomShader = true;
+        // SGCore::ShadersUtils::loadShader(shaderComponent, "SkyboxShader");
         skyboxMesh.m_base.m_meshDataRenderInfo.m_enableFacesCulling = false;
         
         auto skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(skyboxEntities[2]);
@@ -294,6 +304,8 @@ void OceansEdge::GameMain::init()
     // -----------------------------------------------------------
     
     SGCore::ImGuiWrap::ImGuiLayer::initImGui();
+
+    worldChunksUpdater->startThread();
 }
 
 void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
@@ -306,8 +318,6 @@ void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
 void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 {
     // std::cout << playerTransform->m_ownTransform.m_position.x << std::endl;
-    
-    m_world->buildChunksGrid(m_worldScene, playerTransform->m_ownTransform.m_position, 0);
     
     SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
     
@@ -378,6 +388,11 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
     m_world->render(m_worldScene);
 
     // SGCore::ImGuiWrap::ImGuiLayer::endFrame();
+}
+
+SGCore::Ref<OceansEdge::World> OceansEdge::GameMain::getCurrentWorld() noexcept
+{
+    return m_world;
 }
 
 int main()

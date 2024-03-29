@@ -87,8 +87,6 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
 void OceansEdge::World::buildChunksGrid
 (const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed)
 {
-    auto& registry = scene->getECSRegistry();
-    
     lvec2 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x)), std::floor(playerPosition.z / (Settings::s_chunksSize.z)) };
     
     std::unordered_set<lvec2, SGCore::MathUtils::GLMVectorHash<lvec2>> tmpOccupiedIndices;
@@ -129,7 +127,9 @@ void OceansEdge::World::buildChunksGrid
             auto fIt = m_freeChunksEntities.begin();
             
             auto chunk = *fIt;
-            
+
+            if(chunk->m_needsSubData) continue;
+
             lvec2 chunkIdx = p;
             
             const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x, 0, chunkIdx.y * Settings::s_chunksSize.z };
@@ -246,8 +246,6 @@ void OceansEdge::World::buildChunksGrid
             }
 
             chunk->m_needsSubData = true;
-            
-            // std::cout << "polygons count : " << (chunk->m_polygons.size() / 3) << std::endl;
             
             m_lastOccupiedIndices.emplace(p, chunk);
             

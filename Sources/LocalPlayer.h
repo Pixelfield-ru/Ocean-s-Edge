@@ -7,7 +7,7 @@
 
 namespace OceansEdge
 {
-    struct Player
+    struct LocalPlayer
     {
     private:
         bool m_dummy = false;
