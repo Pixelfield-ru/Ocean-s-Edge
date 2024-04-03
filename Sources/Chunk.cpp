@@ -107,7 +107,6 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     if(m_needsSubData && m_indices.size() >= indicesCount)
     {
-        std::cout << "dfdfdf" << std::endl;
         m_indicesBuffer->bind();
         m_indicesBuffer->subData(m_indices.data(), indicesCount, 0);
     }

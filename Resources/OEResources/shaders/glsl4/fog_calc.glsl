@@ -3,7 +3,7 @@
 #sg_include "../../../SGResources/shaders/glsl4/uniform_bufs_decl.glsl"
 #sg_include "../../../SGResources/shaders/glsl4/color_correction/aces.glsl"
 
-vec3 fogColor = vec3(40.0, 40.0, 40.0);
+vec3 fogColor = vec3(80.0, 80.0, 80.0);
 vec3 minFogColor = vec3(0.2, 0.2, 0.2);
 vec3 maxFogColor = vec3(0.9, 0.9, 0.9);
 

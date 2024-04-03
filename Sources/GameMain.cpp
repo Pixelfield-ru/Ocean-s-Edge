@@ -54,6 +54,7 @@ extern "C" {
 #include "Atlas.h"
 #include "World.h"
 #include "LocalPlayer.h"
+#include "OEPhysicalEntity.h"
 
 SGCore::Ref<SGCore::Transform> chunk0Transform;
 SGCore::Ref<SGCore::Transform> playerTransform;
@@ -167,6 +168,7 @@ void OceansEdge::GameMain::init()
     SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
     m_worldScene->getECSRegistry().emplace<LocalPlayer>(testCameraEntity);
+    m_worldScene->getECSRegistry().emplace<SGCore::Ref<OEPhysicalEntity>>(testCameraEntity);
     
     playerTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
     playerTransform->m_ownTransform.m_position = { 0.0, 500, 0 };

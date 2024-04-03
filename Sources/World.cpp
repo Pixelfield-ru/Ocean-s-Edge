@@ -10,10 +10,14 @@
 #include <SGCore/Scene/Layer.h>
 #include <SGCore/Render/Batching/Batch.h>
 #include <SGCore/Scene/EntityBaseInfo.h>
+#include <BulletCollision/CollisionShapes/btConvexTriangleMeshShape.h>
+#include <SGCore/Physics/PhysicsWorld3D.h>
+
 #include "World.h"
 #include "BlocksTypes.h"
 #include "Chunk.h"
 #include "BlockData.h"
+#include "OEPhysicalEntity.h"
 
 void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept
 {
@@ -37,47 +41,8 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
             auto chunk = SGCore::MakeRef<Chunk>();
             m_chunks[{ x, y }] = chunk;
             
-            // chunk->m_blocks = Chunk::blocks_container_t(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
-            // chunk->m_blocks = new BlockData**[Settings::s_chunksSize.x];
-            
-            /*auto& chunkBatch = registry.emplace<SGCore::Batch>(chunkEntity, scene,
-                                                               totalSurfaceBlocksInChunkCnt * 36,
-                                                               totalSurfaceBlocksInChunkCnt);*/
-            
-            for(std::uint32_t bx = 0; bx < Settings::s_chunksSize.x; ++bx)
-            {
-                // chunk->m_blocks[bx] = new BlockData*[Settings::s_chunksSize.y];
-                
-                for(std::uint32_t by = 0; by < Settings::s_chunksSize.y; ++by)
-                {
-                    // chunk->m_blocks[bx][by] = new BlockData[Settings::s_chunksSize.z];
-                    for(std::uint32_t bz = 0; bz < Settings::s_chunksSize.z; ++bz)
-                    {
-                        //
-                        // m_chunkTmpBlocks[bx][by][bz] = { };
-                        // chunk->m_blocks[bx][by][bz] = { };
-                        // chunk->m_blocks[{ bx, by, bz }] = SGCore::MakeRef<BlockData>();
-                    }
-                }
-                
-                /*auto blockEntity = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS)
-                        .m_meshData->addOnScene(scene, SG_LAYER_OPAQUE_NAME);
-                registry.emplace<SGCore::DisableMeshGeometryPass>(blockEntity);
-                registry.remove<SGCore::Ref<SGCore::OctreeCullableInfo>>(blockEntity);
-                registry.remove<SGCore::Ref<SGCore::CullableMesh>>(blockEntity);*/
-                
-                /*chunkEntityChunk.m_blocks[{ bx, bz }] = blockEntity;
-                
-                chunkBatch.addEntity(blockEntity);
-                
-                SGCore::EntityBaseInfo& blockEntityBaseInfo = registry.get<SGCore::EntityBaseInfo>(blockEntity);
-                blockEntityBaseInfo.m_parent = chunkEntity;*/
-            }
-            
-            // m_chunksEntities[curChunk] = chunkEntity;
             ++curChunk;
             m_freeChunksEntities.insert(chunk);
-            // m_lastOccupiedIndices[{ x, y }] = chunkEntity;
         }
     }
     
@@ -134,6 +99,69 @@ void OceansEdge::World::buildChunksGrid
             
             const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x, 0, chunkIdx.y * Settings::s_chunksSize.z };
             chunk->m_position = { chunkPosition.x, 0, chunkPosition.z };
+            chunk->m_aabb.m_min = chunkPosition;
+            chunk->m_aabb.m_max = chunkPosition + glm::vec3 { Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z };
+            
+            auto oeEntitiesView = scene->getECSRegistry().view<SGCore::Ref<OEPhysicalEntity>, SGCore::Ref<SGCore::Transform>>();
+            oeEntitiesView.each([&chunk](const SGCore::entity_t& oeEntity, auto&, const SGCore::Ref<SGCore::Transform>& oeEntityTransform) {
+                if(oeEntityTransform->m_finalTransform.m_aabb.isOverlappedBy(chunk->m_aabb))
+                {
+                    chunk->m_overlappedPhysicalEntities.insert(oeEntity);
+                }
+                else
+                {
+                    chunk->m_overlappedPhysicalEntities.erase(oeEntity);
+                }
+            });
+            
+            auto foundPhysicalChunkIt = std::find_if(m_occupiedPhysicalChunks.begin(), m_occupiedPhysicalChunks.end(), [&chunk](const SGCore::Ref<PhysicalChunk>& physicalChunk) {
+                return physicalChunk->m_chunk == chunk.get();
+            });
+            
+            SGCore::Ref<PhysicalChunk> physicalChunk;
+            
+            if(!chunk->m_overlappedPhysicalEntities.empty())
+            {
+                if(foundPhysicalChunkIt == m_occupiedPhysicalChunks.end())
+                {
+                    physicalChunk = m_freePhysicalChunks.top();
+                    if(!physicalChunk)
+                    {
+                        physicalChunk = SGCore::MakeRef<PhysicalChunk>();
+                        physicalChunk->m_entity = scene->getECSRegistry().create();
+                        physicalChunk->m_rigidbody3D = scene->getECSRegistry().emplace<SGCore::Ref<SGCore::Rigidbody3D>>(
+                                physicalChunk->m_entity, SGCore::MakeRef<SGCore::Rigidbody3D>(scene->getSystem<SGCore::PhysicsWorld3D>()));
+                        scene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(physicalChunk->m_entity,
+                                SGCore::MakeRef<SGCore::Transform>());
+                    }
+                    else
+                    {
+                        physicalChunk->m_isColliderFormed = false;
+                        physicalChunk->m_colliderVertices.clear();
+                        m_freePhysicalChunks.pop();
+                    }
+                    
+                    m_occupiedPhysicalChunks.push_back(physicalChunk);
+                }
+                else
+                {
+                    physicalChunk = *foundPhysicalChunkIt;
+                }
+                
+                physicalChunk->m_chunk = chunk.get();
+            }
+            else
+            {
+                if(foundPhysicalChunkIt != m_occupiedPhysicalChunks.end())
+                {
+                    physicalChunk = *foundPhysicalChunkIt;
+                    
+                    physicalChunk->m_isColliderFormed = false;
+                    physicalChunk->m_colliderVertices.clear();
+                    m_occupiedPhysicalChunks.erase(foundPhysicalChunkIt);
+                    m_freePhysicalChunks.push(*foundPhysicalChunkIt);
+                }
+            }
             
             // todo: make flexible settings
             /*perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
@@ -223,29 +251,52 @@ void OceansEdge::World::buildChunksGrid
                         
                         if(pyBD == BlocksTypes::OEB_AIR)
                         {
-                            addBlockTopSideVertices(blockPos, chunk);
+                            addBlockTopSideVertices(blockPos, chunk, physicalChunk);
                         }
                         if(pxBD == BlocksTypes::OEB_AIR)
                         {
-                            addBlockRightSideVertices(blockPos, chunk);
+                            addBlockRightSideVertices(blockPos, chunk, physicalChunk);
                         }
                         if(mxBD == BlocksTypes::OEB_AIR)
                         {
-                            addBlockLeftSideVertices(blockPos, chunk);
+                            addBlockLeftSideVertices(blockPos, chunk, physicalChunk);
                         }
                         if(pzBD == BlocksTypes::OEB_AIR)
                         {
-                            addBlockFaceSideVertices(blockPos, chunk);
+                            addBlockFaceSideVertices(blockPos, chunk, physicalChunk);
                         }
                         if(mzBD == BlocksTypes::OEB_AIR)
                         {
-                            addBlockBackSideVertices(blockPos, chunk);
+                            addBlockBackSideVertices(blockPos, chunk, physicalChunk);
                         }
                     }
                 }
             }
 
             chunk->m_needsSubData = true;
+            if(physicalChunk && physicalChunk->m_chunk == chunk.get() && !physicalChunk->m_isColliderFormed)
+            {
+                auto& chunkRigidbody3D = physicalChunk->m_rigidbody3D;
+                chunkRigidbody3D->removeFromWorld();
+                
+                physicalChunk->m_physicalTriangleMesh = SGCore::IMeshData::generatePhysicalMesh(chunk->m_vertices, chunk->m_indices);
+                auto shape = SGCore::MakeRef<btConvexTriangleMeshShape>(physicalChunk->m_physicalTriangleMesh.get(), true);
+                chunkRigidbody3D->setShape(shape);
+                
+                chunkRigidbody3D->m_bodyFlags.removeFlag(btCollisionObject::CF_STATIC_OBJECT);
+                chunkRigidbody3D->m_bodyFlags.addFlag(btCollisionObject::CF_DYNAMIC_OBJECT);
+                chunkRigidbody3D->m_body->setRestitution(0.9);
+                btScalar mass = 100.0f;
+                btVector3 inertia(0, 0, 0);
+                chunkRigidbody3D->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+                chunkRigidbody3D->m_body->setMassProps(mass, inertia);
+                chunkRigidbody3D->updateFlags();
+                chunkRigidbody3D->reAddToWorld();
+                
+                physicalChunk->m_isColliderFormed = true;
+                
+                std::cout << "dfdfdf" << std::endl;
+            }
             
             m_lastOccupiedIndices.emplace(p, chunk);
             
@@ -254,7 +305,7 @@ void OceansEdge::World::buildChunksGrid
     }
 }
 
-void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept
 {
     if(!chunk->isBuffersHaveFreeSpace()) return;
     
@@ -307,7 +358,7 @@ void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const 
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockBottomSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockBottomSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept
 {
     if(!chunk->isBuffersHaveFreeSpace()) return;
     
@@ -360,7 +411,7 @@ void OceansEdge::World::addBlockBottomSideVertices(const ivec3_32& blockPos, con
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept
 {
     if(!chunk->isBuffersHaveFreeSpace()) return;
     
@@ -416,7 +467,7 @@ void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockBackSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockBackSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept
 {
     if(!chunk->isBuffersHaveFreeSpace()) return;
     
@@ -469,7 +520,7 @@ void OceansEdge::World::addBlockBackSideVertices(const ivec3_32& blockPos, const
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept
 {
     if(!chunk->isBuffersHaveFreeSpace()) return;
     
@@ -524,7 +575,7 @@ void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const
     chunk->m_currentIndex += 4;
 }
 
-void OceansEdge::World::addBlockRightSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept
+void OceansEdge::World::addBlockRightSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept
 {
     if(!chunk->isBuffersHaveFreeSpace()) return;
     

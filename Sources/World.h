@@ -15,6 +15,7 @@
 #include "GameGlobals.h"
 #include "Chunk.h"
 #include "SGUtils/Noise/PerlinNoise.hpp"
+#include "PhysicalChunk.h"
 
 namespace OceansEdge
 {
@@ -31,15 +32,12 @@ namespace OceansEdge
         
         void buildChunksGrid(const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed);
     private:
-        float interpolate(float from, float to, float percent)
-        {
-            float difference = to - from;
-            return from + (difference * percent);
-        }
-        
         std::uniform_int_distribution<std::mt19937::result_type> m_yDirDistribution;
         std::mt19937 m_yDirDistributionRange;
         float m_yDir = 0;
+        
+        std::vector<SGCore::Ref<PhysicalChunk>> m_occupiedPhysicalChunks;
+        std::stack<SGCore::Ref<PhysicalChunk>> m_freePhysicalChunks;
         
         chunks_container_t m_chunks;
         
@@ -52,12 +50,12 @@ namespace OceansEdge
         std::unordered_set<SGCore::Ref<Chunk>> m_occupiedChunksEntities;
         std::unordered_map<lvec2, SGCore::Ref<Chunk>, SGCore::MathUtils::GLMVectorHash<lvec2>> m_lastOccupiedIndices;
         
-        void addBlockTopSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept;
-        void addBlockBottomSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept;
-        void addBlockFaceSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept;
-        void addBlockBackSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept;
-        void addBlockLeftSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept;
-        void addBlockRightSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk) noexcept;
+        void addBlockTopSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept;
+        void addBlockBottomSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept;
+        void addBlockFaceSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept;
+        void addBlockBackSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept;
+        void addBlockLeftSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept;
+        void addBlockRightSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk) noexcept;
         // static inline std::unordered_set<entt::entity> m_chunksEntities;
     };
 }

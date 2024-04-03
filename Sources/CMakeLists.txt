@@ -79,7 +79,6 @@
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGConsole Sources/SGConsole)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGCore Sources/SGCore)
- add_subdirectory(${SUNGEAR_DIR}/syslibs syslibs)
  # add_subdirectory(${SUNGEAR_DIR} Sungear)
 
  add_executable(${PROJECT_NAME} ${OCEANS_EDGE_SOURCES})
