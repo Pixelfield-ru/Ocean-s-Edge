@@ -47,6 +47,7 @@ extern "C" {
 #include <SGCore/Render/SpacePartitioning/OctreeCullableInfo.h>
 #include <SGCore/Render/SpacePartitioning/CullableMesh.h>
 #include <SGCore/Render/SpacePartitioning/IgnoreOctrees.h>
+#include <SGCore/Threading/ThreadsManager.h>
 
 #include "GameMain.h"
 #include "Skybox/DayNightCycleSystem.h"
@@ -399,9 +400,21 @@ SGCore::Ref<OceansEdge::World> OceansEdge::GameMain::getCurrentWorld() noexcept
 
 int main()
 {
-    SGCore::CoreMain::onInit->connect<&OceansEdge::GameMain::init>();
-    SGCore::CoreMain::getRenderTimer().onUpdate->connect<&OceansEdge::GameMain::update>();
-    SGCore::CoreMain::getFixedTimer().onUpdate->connect<&OceansEdge::GameMain::fixedUpdate>();
+    std::cout << "main thread: " << SGCore::Threading::ThreadsManager::currentThread() << std::endl;
+    
+    auto sampleWorker = SGCore::Threading::ThreadsManager::currentThread()->createWorker();
+    
+    sampleWorker->setOnExecutedCallback([]() {
+        std::cout << "sample worker done" << std::endl;
+    });
+    
+    SGCore::Threading::ThreadsManager::currentThread()->addWorker(sampleWorker);
+    
+    SGCore::Threading::ThreadsManager::currentThread()->processWorkers();
+    
+    SGCore::CoreMain::onInit.connect<&OceansEdge::GameMain::init>();
+    SGCore::CoreMain::getRenderTimer().onUpdate.connect<&OceansEdge::GameMain::update>();
+    SGCore::CoreMain::getFixedTimer().onUpdate.connect<&OceansEdge::GameMain::fixedUpdate>();
     
     SGCore::CoreMain::start();
     

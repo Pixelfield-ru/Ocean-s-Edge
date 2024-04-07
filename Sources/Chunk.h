@@ -57,9 +57,9 @@ namespace OceansEdge
 
         void onRenderPipelineSet() noexcept;
 
-        SGCore::EventListener<void()> m_onRenderPipelineSetEventListener = SGCore::MakeEventListener<void()>([this]() {
+        SGCore::EventListener<void()> m_onRenderPipelineSetEventListener = [this]() {
             onRenderPipelineSet();
-        });
+        };
         
         SGCore::Ref<SGCore::IShader> m_shader;
     };
