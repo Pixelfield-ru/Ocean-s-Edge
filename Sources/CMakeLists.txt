@@ -48,9 +48,9 @@
 
  file(GLOB_RECURSE OCEANS_EDGE_SOURCES ../Sources/*.cpp ../Sources/*.h)
 
- set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
+ #set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
  #set(SUNGEAR_DIR "D:/Pixelfield/NativeSungearEngine/NativeSungearEngine")
- #set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine")
+ set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine/SungearEngine")
 
  include_directories(${PROJECT_NAME} PUBLIC
          ${SUNGEAR_DIR}/Externals
@@ -84,9 +84,6 @@
  add_executable(${PROJECT_NAME} ${OCEANS_EDGE_SOURCES})
 
  target_link_libraries(${PROJECT_NAME} PUBLIC
-         ${BULLET_COLLISION_LIBRARY}
-         ${BULLET_DYNAMICS_LIBRARY}
-         ${BULLET_MATH_LIBRARY}
          SGCore
  )
 

@@ -5,8 +5,6 @@
 #ifndef OCEANSEDGE_GAMEMAIN_H
 #define OCEANSEDGE_GAMEMAIN_H
 
-#define NOMINMAX
-
 #include "World.h"
 
 int main();

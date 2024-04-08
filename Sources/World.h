@@ -11,6 +11,7 @@
 #include <SGCore/Scene/Scene.h>
 #include <bitset>
 #include <bit>
+#include <stack>
 
 #include "GameGlobals.h"
 #include "Chunk.h"
