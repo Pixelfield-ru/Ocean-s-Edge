@@ -48,9 +48,9 @@
 
  file(GLOB_RECURSE OCEANS_EDGE_SOURCES ../Sources/*.cpp ../Sources/*.h)
 
- #set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
+ set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
  #set(SUNGEAR_DIR "D:/Pixelfield/NativeSungearEngine/NativeSungearEngine")
- set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine/SungearEngine")
+ #set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine/SungearEngine")
 
  include_directories(${PROJECT_NAME} PUBLIC
          ${SUNGEAR_DIR}/Externals

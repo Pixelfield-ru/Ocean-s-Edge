@@ -102,6 +102,7 @@ void OceansEdge::World::buildChunksGrid
             chunk->m_aabb.m_min = chunkPosition;
             chunk->m_aabb.m_max = chunkPosition + glm::vec3 { Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z };
             
+            // ==================================================================
             auto oeEntitiesView = scene->getECSRegistry().view<SGCore::Ref<OEPhysicalEntity>, SGCore::Ref<SGCore::Transform>>();
             oeEntitiesView.each([&chunk](const SGCore::entity_t& oeEntity, auto&, const SGCore::Ref<SGCore::Transform>& oeEntityTransform) {
                 if(oeEntityTransform->m_finalTransform.m_aabb.isOverlappedBy(chunk->m_aabb))
@@ -162,6 +163,8 @@ void OceansEdge::World::buildChunksGrid
                     m_freePhysicalChunks.push(*foundPhysicalChunkIt);
                 }
             }
+            
+            // ==================================================================
             
             // todo: make flexible settings
             /*perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
@@ -276,26 +279,33 @@ void OceansEdge::World::buildChunksGrid
             chunk->m_needsSubData = true;
             if(physicalChunk && physicalChunk->m_chunk == chunk.get() && !physicalChunk->m_isColliderFormed)
             {
-                auto& chunkRigidbody3D = physicalChunk->m_rigidbody3D;
-                chunkRigidbody3D->removeFromWorld();
+                static SGCore::Threading::WorkerSingletonGuard physicalChunkWorkerGuard = SGCore::Threading::MakeWorkerSingletonGuard();
+                auto physicalChunkWorker = scene->getSystem<SGCore::PhysicsWorld3D>()->getThread()->createWorker(physicalChunkWorkerGuard);
+                physicalChunkWorker->setOnExecuteCallback([](SGCore::Ref<PhysicalChunk> physChunk, SGCore::Ref<Chunk> c) {
+                    auto chunkRigidbody3D = physChunk->m_rigidbody3D;
+                    
+                    chunkRigidbody3D->removeFromWorld();
+                    
+                    physChunk->m_physicalTriangleMesh = SGCore::IMeshData::generatePhysicalMesh(c->m_vertices, c->m_indices);
+                    auto shape = SGCore::MakeRef<btConvexTriangleMeshShape>(physChunk->m_physicalTriangleMesh.get(), true);
+                    chunkRigidbody3D->setShape(shape);
+                    
+                    chunkRigidbody3D->m_bodyFlags.removeFlag(btCollisionObject::CF_STATIC_OBJECT);
+                    chunkRigidbody3D->m_bodyFlags.addFlag(btCollisionObject::CF_DYNAMIC_OBJECT);
+                    chunkRigidbody3D->m_body->setRestitution(0.9);
+                    btScalar mass = 100.0f;
+                    btVector3 inertia(0, 0, 0);
+                    chunkRigidbody3D->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+                    chunkRigidbody3D->m_body->setMassProps(mass, inertia);
+                    chunkRigidbody3D->updateFlags();
+                    chunkRigidbody3D->reAddToWorld();
+                    
+                    physChunk->m_isColliderFormed = true;
+                    
+                    std::cout << "dfdfdf" << std::endl;
+                }, physicalChunk, chunk);
                 
-                physicalChunk->m_physicalTriangleMesh = SGCore::IMeshData::generatePhysicalMesh(chunk->m_vertices, chunk->m_indices);
-                auto shape = SGCore::MakeRef<btConvexTriangleMeshShape>(physicalChunk->m_physicalTriangleMesh.get(), true);
-                chunkRigidbody3D->setShape(shape);
-                
-                chunkRigidbody3D->m_bodyFlags.removeFlag(btCollisionObject::CF_STATIC_OBJECT);
-                chunkRigidbody3D->m_bodyFlags.addFlag(btCollisionObject::CF_DYNAMIC_OBJECT);
-                chunkRigidbody3D->m_body->setRestitution(0.9);
-                btScalar mass = 100.0f;
-                btVector3 inertia(0, 0, 0);
-                chunkRigidbody3D->m_body->getCollisionShape()->calculateLocalInertia(mass, inertia);
-                chunkRigidbody3D->m_body->setMassProps(mass, inertia);
-                chunkRigidbody3D->updateFlags();
-                chunkRigidbody3D->reAddToWorld();
-                
-                physicalChunk->m_isColliderFormed = true;
-                
-                std::cout << "dfdfdf" << std::endl;
+                scene->getSystem<SGCore::PhysicsWorld3D>()->getThread()->addWorker(physicalChunkWorker);
             }
             
             m_lastOccupiedIndices.emplace(p, chunk);

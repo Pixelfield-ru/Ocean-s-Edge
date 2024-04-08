@@ -308,7 +308,7 @@ void OceansEdge::GameMain::init()
     
     SGCore::ImGuiWrap::ImGuiLayer::initImGui();
 
-    worldChunksUpdater->startThread();
+    worldChunksUpdater->getThread()->start();
 }
 
 void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
