@@ -19,6 +19,7 @@ namespace OceansEdge
         // 4 color bytes, 2 bytes for texture id,
         // size_t m_data = 0;
         std::uint16_t m_type = BlocksTypes::OEB_AIR;
+        ivec3_16 m_indices = { 0, 0, 0 };
         // size_t m_type = BlocksTypes::OEB_AIR;
     };
 }

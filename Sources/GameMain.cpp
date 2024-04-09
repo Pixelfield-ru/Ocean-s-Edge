@@ -54,11 +54,8 @@ extern "C" {
 #include "BlocksTypes.h"
 #include "Atlas.h"
 #include "World.h"
-#include "LocalPlayer.h"
+#include "Player/LocalPlayer.h"
 #include "OEPhysicalEntity.h"
-
-SGCore::Ref<SGCore::Transform> chunk0Transform;
-SGCore::Ref<SGCore::Transform> playerTransform;
 
 void OceansEdge::GameMain::init()
 {
@@ -162,23 +159,6 @@ void OceansEdge::GameMain::init()
     // cubeModel->m_nodes[0]->m_meshesData[0]
     
     // -----------------------------------------------------------
-    
-    // INITIALIZING PLAYER ---------------------------------------
-    
-    auto testCameraEntity = m_worldScene->getECSRegistry().create();
-    SGCore::EntityBaseInfo& cameraBaseInfo = m_worldScene->getECSRegistry().emplace<SGCore::EntityBaseInfo>(testCameraEntity);
-    cameraBaseInfo.setRawName("SGMainCamera");
-    m_worldScene->getECSRegistry().emplace<LocalPlayer>(testCameraEntity);
-    m_worldScene->getECSRegistry().emplace<SGCore::Ref<OEPhysicalEntity>>(testCameraEntity);
-    
-    playerTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(testCameraEntity, SGCore::MakeRef<SGCore::Transform>());
-    playerTransform->m_ownTransform.m_position = { 0.0, 500, 0 };
-
-    auto& cameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Camera3D>>(testCameraEntity,
-            SGCore::MakeRef<SGCore::Camera3D>());
-    SGCore::Controllable3D& cameraEntityControllable = m_worldScene->getECSRegistry().emplace<SGCore::Controllable3D>(testCameraEntity);
-    auto& cameraRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::RenderingBase>>(testCameraEntity,
-                                                                                                           SGCore::MakeRef<SGCore::RenderingBase>());
     
     // -----------------------------------------------------------
     

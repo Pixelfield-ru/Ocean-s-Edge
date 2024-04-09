@@ -17,20 +17,23 @@ namespace OceansEdge
     using uvec2 = glm::vec<2, unsigned int, glm::defaultp>;
     using ulvec2 = glm::vec<2, size_t, glm::defaultp>;
     
-    using lvec3 = glm::vec<3, long, glm::defaultp>;
-    using lvec2 = glm::vec<2, long, glm::defaultp>;
-    
     using ivec3_8 = glm::vec<3, std::int8_t, glm::defaultp>;
     using ivec2_8 = glm::vec<2, std::int8_t, glm::defaultp>;
     
+    using ivec3_16 = glm::vec<3, std::int16_t, glm::defaultp>;
+    using ivec2_16 = glm::vec<2, std::int16_t, glm::defaultp>;
+    
     using ivec3_32 = glm::vec<3, std::int32_t, glm::defaultp>;
     using ivec2_32 = glm::vec<2, std::int32_t, glm::defaultp>;
+    
+    using ivec3_64 = glm::vec<3, std::int64_t, glm::defaultp>;
+    using ivec2_64 = glm::vec<2, std::int64_t, glm::defaultp>;
     
     class Settings
     {
     public:
         static inline long s_drawingRange = 8;
-        static inline lvec3 s_chunksSize { 62, 1024, 62 };
+        static inline ivec3_64 s_chunksSize { 62, 1024, 62 };
         
         static void init()
         {
