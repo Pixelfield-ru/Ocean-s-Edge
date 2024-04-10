@@ -2,6 +2,7 @@
 // Created by ilya on 24.03.24.
 //
 #include "Chunk.h"
+#include "Resources.h"
 
 #include <SGCore/Graphics/API/IVertexArray.h>
 #include <SGCore/Graphics/API/IVertexBuffer.h>
@@ -91,6 +92,8 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
         }
         
         subPassShader->useVectorf("u_chunkPosition", m_position);
+        Resources::getBlocksAtlas()->bind(0);
+        subPassShader->useTextureBlock("u_blocksAtlas", 0);
         
         // std::cout << "verticesCount : " << verticesCount << ", indicesCount : " << indicesCount << std::endl;
         

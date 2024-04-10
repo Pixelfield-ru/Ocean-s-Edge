@@ -38,7 +38,7 @@ namespace OceansEdge
         static void init()
         {
             m_shadersPaths["ChunkShader"].m_GLSL4RealizationPath = "../OEResources/shaders/glsl4/chunk_shader.glsl";
-            m_shadersPaths["FoggedSkyboxShader"].m_GLSL4RealizationPath = "../OEResources/shaders/glsl4/fogged_skybox.glsl";
+            m_shadersPaths["FoggedSkyboxShader"].m_GLSL4RealizationPath = "../SGResources/shaders/glsl4/skybox/default_shader.glsl"; // "../OEResources/shaders/glsl4/fogged_skybox.glsl";
         }
         
         static auto& getShadersPaths() noexcept

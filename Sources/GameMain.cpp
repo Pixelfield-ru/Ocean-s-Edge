@@ -56,6 +56,8 @@ extern "C" {
 #include "World.h"
 #include "Player/LocalPlayer.h"
 #include "OEPhysicalEntity.h"
+#include "Defines.h"
+#include "Resources.h"
 
 void OceansEdge::GameMain::init()
 {
@@ -67,6 +69,8 @@ void OceansEdge::GameMain::init()
     auto geniusJPG = SGCore::AssetManager::loadAsset<SGCore::ITexture2D>(
             "../SGResources/textures/genius.jpg"
     );
+    
+    Resources::init();
     
     geniusJPG->setRawName("GeniusTexture");
     
@@ -105,62 +109,6 @@ void OceansEdge::GameMain::init()
             "../SGResources/models/standard/cube.obj"
             //"../SGResources/models/test/vss/scene.gltf"
     );
-    
-    // mudWithGrassModel->m_nodes[0]->m_children[0]->m_meshesData[0]->setVertexUV();
-    
-    float aw = (float) Atlas::getAtlas()->m_width;
-    float ah = (float) Atlas::getAtlas()->m_height;
-    
-    /*for(size_t i = 0; i < mudWithGrassModel->m_nodes[0]->m_children[0]->m_children.size(); ++i)
-    {
-        auto& node = mudWithGrassModel->m_nodes[0]->m_children[0]->m_children[i];
-        std::cout << "node " << i << " children cnt " << node->m_children.size() << " meshes cnt " << node->m_meshesData.size() << std::endl;
-    }*/
-    
-    // BlocksTypes::getBlockMeta(BlocksTypes::OEB_MUD_WITH_GRASS) = nullptr;
-    auto& mudWithGrassBlockMeta = BlocksTypes::getBlockTypeMeta(BlocksTypes::OEB_MUD_WITH_GRASS);
-    // mudWithGrassBlockMeta.m_meshData = mudWithGrassModel->m_nodes[0]->m_children[0]->m_children[0]->m_meshesData[0];
-    mudWithGrassBlockMeta.m_meshData = mudWithGrassModel->m_nodes[0]->m_children[0]->m_meshesData[0];
-    mudWithGrassBlockMeta.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_DIFFUSE, Atlas::getAtlas());
-    
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(8, 0, 0, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(9, 160.0f / aw, 0, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(10, 160.0f / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(11, 0, 160 / ah, 0);
-    
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(1, 0, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(2, 160.0f / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(3, 160.0f / aw, 320 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(0, 0, 320 / ah, 0);
-    
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(6, 0, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(7, 160.0f / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(4, 160.0f / aw, 320 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(5, 0, 320 / ah, 0);
-    
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(15, 0, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(12, 160.0f / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(13, 160.0f / aw, 320 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(14, 0, 320 / ah, 0);
-    
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(16, 3 * 160 / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(17, 4 * 160.0f / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(18, 4 * 160.0f / aw, 320 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(19, 3 * 160 / aw, 320 / ah, 0);
-    
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(20, 0, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(21, 160.0f / aw, 160 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(22, 160.0f / aw, 320 / ah, 0);
-    mudWithGrassBlockMeta.m_meshData->setVertexUV(23, 0, 320 / ah, 0);
-    
-    mudWithGrassBlockMeta.m_meshData->prepare();
-    // mudWithGrassBlockMeta.m_
-    
-    // cubeModel->m_nodes[0]->m_meshesData[0]
-    
-    // -----------------------------------------------------------
-    
-    // -----------------------------------------------------------
     
     // INITIALIZING SKYBOX ---------------------------------------
     
@@ -231,12 +179,6 @@ void OceansEdge::GameMain::init()
         timesNewRomanFont_height128_eng->parse('0', '9');
         timesNewRomanFont_height128_eng->parse({ '.', '!', '?', ')' });
         timesNewRomanFont_height128_eng->createAtlas();
-        
-        timesNewRomanFont_height128_rus->saveTextAsTexture("font_spec_text_test_rus.png", u"Здравствуйте.");
-        timesNewRomanFont_height128_eng->saveTextAsTexture("font_spec_text_test_eng.png", u"Hi there!!!???))");
-        
-        timesNewRomanFont_height128_rus->saveAtlasAsTexture("font_spec_test_rus.png");
-        timesNewRomanFont_height128_eng->saveAtlasAsTexture("font_spec_test_eng.png");
         
         auto textEntity = m_worldScene->getECSRegistry().create();
         SGCore::Text& helloWorldUIText = m_worldScene->getECSRegistry().emplace<SGCore::Text>(textEntity);
