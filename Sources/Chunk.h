@@ -24,7 +24,7 @@ namespace OceansEdge
     {
         Chunk();
         
-        SGCore::AABB m_aabb;
+        SGCore::AABB<> m_aabb;
         std::unordered_set<SGCore::entity_t> m_overlappedPhysicalEntities;
         
         void render(const SGCore::Ref<SGCore::Scene>& scene);

@@ -17,6 +17,7 @@
 #include <SGCore/Transformations/Controllable3D.h>
 #include <SGCore/Render/DebugDraw.h>
 #include <SGCore/Input/InputManager.h>
+#include <SGUtils/Math/MathPrimitivesUtils.h>
 
 #include "World.h"
 #include "BlocksTypes.h"
@@ -300,7 +301,7 @@ void OceansEdge::World::buildChunksGrid
     bool lmbPressed = m_playerInputListener->mouseButtonPressed(SGCore::MouseButton::MOUSE_BUTTON_LEFT);
     bool rmbPressed = m_playerInputListener->mouseButtonPressed(SGCore::MouseButton::MOUSE_BUTTON_RIGHT);
     
-    if(lmbPressed)
+    if(lmbPressed || rmbPressed)
     {
         ivec2_64 foundNearestBlockChunk;
         BlockData* foundNearestBlockData = nullptr;
@@ -320,23 +321,22 @@ void OceansEdge::World::buildChunksGrid
                         chunkPos + glm::vec3 { blockData.m_indices.x, blockData.m_indices.y, blockData.m_indices.z };
                 glm::vec3 blockMax = blockMin + glm::vec3 { 1, 1, 1 };
                 
-                float foundLength = 0;
-                
-                bool intersected = SGCore::MathUtils::lineAABBIntersection<float>(
+                SGCore::MathPrimitivesUtils::RayIntersectionInfo intersectionInfo;
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
                         playerTransform->m_ownTransform.m_position,
                         playerTransform->m_ownTransform.m_forward,
                         blockMin,
                         blockMax,
                         7,
-                        foundLength);
+                        intersectionInfo);
                 
-                if(intersected)
+                if(intersectionInfo.m_isIntersected)
                 {
-                    if(foundLength < nearestDistance)
+                    if(intersectionInfo.m_hitDistance < nearestDistance)
                     {
                         foundNearestBlockChunk = p.first;
                         foundNearestBlockData = &blockData;
-                        nearestDistance = foundLength;
+                        nearestDistance = intersectionInfo.m_hitDistance;
                     }
                 }
                 
@@ -346,9 +346,147 @@ void OceansEdge::World::buildChunksGrid
         
         if(foundNearestBlockData)
         {
-            m_changedBlocks[foundNearestBlockChunk][foundNearestBlockData->m_indices] = BlocksTypes::OEB_AIR;
-            m_freeChunksEntities.insert(m_lastOccupiedIndices[foundNearestBlockChunk]);
-            m_lastOccupiedIndices.erase(foundNearestBlockChunk);
+            if(lmbPressed)
+            {
+                m_changedBlocks[foundNearestBlockChunk][foundNearestBlockData->m_indices] = BlocksTypes::OEB_AIR;
+                m_freeChunksEntities.insert(m_lastOccupiedIndices[foundNearestBlockChunk]);
+                m_lastOccupiedIndices.erase(foundNearestBlockChunk);
+            }
+            
+            if(rmbPressed)
+            {
+                glm::vec3 chunkPos = m_lastOccupiedIndices[foundNearestBlockChunk]->m_position;
+                
+                ivec3_16 blockToPutIdx = foundNearestBlockData->m_indices;
+                ivec2_64 chunkToPutIdx = foundNearestBlockChunk;
+                
+                glm::vec3 blockMin =
+                        chunkPos + glm::vec3 { blockToPutIdx.x, blockToPutIdx.y, blockToPutIdx.z };
+                
+                SGCore::MathPrimitivesUtils::RayIntersectionInfo<> intersectionInfos[6];
+                
+                // +Y
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
+                        playerTransform->m_ownTransform.m_position,
+                        playerTransform->m_ownTransform.m_forward,
+                        blockMin + glm::vec3 { 0, 0.999, 0 },
+                        blockMin + glm::vec3 { 1, 1, 1 },
+                        7,
+                        intersectionInfos[0]
+                );
+                
+                // -Y
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
+                        playerTransform->m_ownTransform.m_position,
+                        playerTransform->m_ownTransform.m_forward,
+                        blockMin,
+                        blockMin + glm::vec3 { 1, 0.001, 1 },
+                        7,
+                        intersectionInfos[1]
+                );
+                
+                // +X
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
+                        playerTransform->m_ownTransform.m_position,
+                        playerTransform->m_ownTransform.m_forward,
+                        blockMin + glm::vec3 { 0.999, 0, 0 },
+                        blockMin + glm::vec3 { 1, 1, 1 },
+                        7,
+                        intersectionInfos[2]
+                );
+                
+                // -X
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
+                        playerTransform->m_ownTransform.m_position,
+                        playerTransform->m_ownTransform.m_forward,
+                        blockMin,
+                        blockMin + glm::vec3 { 0.001, 1, 1 },
+                        7,
+                        intersectionInfos[3]
+                );
+                
+                // +Z
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
+                        playerTransform->m_ownTransform.m_position,
+                        playerTransform->m_ownTransform.m_forward,
+                        blockMin + glm::vec3 { 0, 0, 0.999 },
+                        blockMin + glm::vec3 { 1, 1, 1 },
+                        7,
+                        intersectionInfos[4]
+                );
+                
+                // -Z
+                SGCore::MathPrimitivesUtils::lineAABBIntersection<float>(
+                        playerTransform->m_ownTransform.m_position,
+                        playerTransform->m_ownTransform.m_forward,
+                        blockMin,
+                        blockMin + glm::vec3 { 1, 1, 0.001 },
+                        7,
+                        intersectionInfos[5]
+                );
+                
+                float foundNearestDistance = std::numeric_limits<float>::max();
+                std::uint8_t foundFaceIdx = 0;
+                
+                for(std::uint8_t i = 0; i < 6; ++i)
+                {
+                    if(intersectionInfos[i].m_isIntersected && intersectionInfos[i].m_hitDistance < foundNearestDistance)
+                    {
+                        foundNearestDistance = intersectionInfos[i].m_hitDistance;
+                        foundFaceIdx = i;
+                    }
+                }
+                
+                // top face
+                if(foundFaceIdx == 0)
+                {
+                    blockToPutIdx.y = std::clamp<float>(blockToPutIdx.y + 1, 0, Settings::s_chunksSize.y);
+                }
+                else if(foundFaceIdx == 1)
+                {
+                    blockToPutIdx.y = std::clamp<float>(blockToPutIdx.y - 1, 0, Settings::s_chunksSize.y);
+                }
+                else if(foundFaceIdx == 2)
+                {
+                    ++blockToPutIdx.x;
+                    if(blockToPutIdx.x > Settings::s_chunksSize.x - 1)
+                    {
+                        ++chunkToPutIdx.x;
+                        blockToPutIdx.x = 0;
+                    }
+                }
+                else if(foundFaceIdx == 3)
+                {
+                    --blockToPutIdx.x;
+                    if(blockToPutIdx.x < 0)
+                    {
+                        --chunkToPutIdx.x;
+                        blockToPutIdx.x = Settings::s_chunksSize.x - 1;
+                    }
+                }
+                else if(foundFaceIdx == 4)
+                {
+                    ++blockToPutIdx.z;
+                    if(blockToPutIdx.z > Settings::s_chunksSize.z - 1)
+                    {
+                        ++chunkToPutIdx.y;
+                        blockToPutIdx.z = 0;
+                    }
+                }
+                else if(foundFaceIdx == 5)
+                {
+                    --blockToPutIdx.z;
+                    if(blockToPutIdx.z < 0)
+                    {
+                        --chunkToPutIdx.y;
+                        blockToPutIdx.z = Settings::s_chunksSize.z - 1;
+                    }
+                }
+                
+                m_changedBlocks[chunkToPutIdx][blockToPutIdx] = BlocksTypes::OEB_MUD_WITH_GRASS;
+                m_freeChunksEntities.insert(m_lastOccupiedIndices[chunkToPutIdx]);
+                m_lastOccupiedIndices.erase(chunkToPutIdx);
+            }
         }
     }
     
