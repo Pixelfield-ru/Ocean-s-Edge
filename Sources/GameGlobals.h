@@ -11,6 +11,8 @@
 
 namespace OceansEdge
 {
+    using afvec32 = glm::vec<3, std::atomic<float>, glm::defaultp>;
+    
     using uvec3 = glm::vec<3, unsigned int, glm::defaultp>;
     using ulvec3 = glm::vec<3, size_t, glm::defaultp>;
     

@@ -11,6 +11,8 @@ vec2 currentUVs[4] = vec2[] (
 
 // BLOCKS TYPES
 #define OE_BT_MUD_WITH_GRASS 1
+#define OE_BT_BRICKS 2
+#define OE_BT_STONE 3
 
 // FACES
 #define FACE_UP 0
@@ -42,5 +44,21 @@ void changeUVForCurrentVertex(int blockType, int blockFace)
         currentUVs[1] = vec2(160 / BLOCKS_ATLAS_SIZE.x, 160 / BLOCKS_ATLAS_SIZE.y);
         currentUVs[2] = vec2(320 / BLOCKS_ATLAS_SIZE.x, 160 / BLOCKS_ATLAS_SIZE.y);
         currentUVs[3] = vec2(320 / BLOCKS_ATLAS_SIZE.x, 320 / BLOCKS_ATLAS_SIZE.y);
+    }
+
+    if(blockType == OE_BT_BRICKS)
+    {
+        currentUVs[0] = vec2(160 / BLOCKS_ATLAS_SIZE.x, 480 / BLOCKS_ATLAS_SIZE.y);
+        currentUVs[1] = vec2(160 / BLOCKS_ATLAS_SIZE.x, 640 / BLOCKS_ATLAS_SIZE.y);
+        currentUVs[2] = vec2(320 / BLOCKS_ATLAS_SIZE.x, 640 / BLOCKS_ATLAS_SIZE.y);
+        currentUVs[3] = vec2(320 / BLOCKS_ATLAS_SIZE.x, 480 / BLOCKS_ATLAS_SIZE.y);
+    }
+
+    if(blockType == OE_BT_STONE)
+    {
+        currentUVs[0] = vec2(800 / BLOCKS_ATLAS_SIZE.x, 0 / BLOCKS_ATLAS_SIZE.y);
+        currentUVs[1] = vec2(800 / BLOCKS_ATLAS_SIZE.x, 160 / BLOCKS_ATLAS_SIZE.y);
+        currentUVs[2] = vec2(960 / BLOCKS_ATLAS_SIZE.x, 160 / BLOCKS_ATLAS_SIZE.y);
+        currentUVs[3] = vec2(960 / BLOCKS_ATLAS_SIZE.x, 0 / BLOCKS_ATLAS_SIZE.y);
     }
 }

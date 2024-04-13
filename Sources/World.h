@@ -45,6 +45,9 @@ namespace OceansEdge
         
         SGCore::entity_t m_playerEntity;
         
+        std::vector<std::uint32_t> m_currentChunkIndicesCopy;
+        std::vector<std::int32_t> m_currentChunkVerticesCopy;
+        
         // first - chunk index
         // second - vector of visible blocks types
         std::unordered_map<ivec2_64, std::vector<BlockData>, SGCore::MathUtils::GLMVectorHash<ivec2_64>> m_visibleBlocksTypes;

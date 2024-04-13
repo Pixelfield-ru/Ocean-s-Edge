@@ -79,6 +79,7 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
 void OceansEdge::World::buildChunksGrid
 (const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed)
 {
+    
     ivec2_64 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x)), std::floor(playerPosition.z / (Settings::s_chunksSize.z)) };
     
     std::unordered_set<ivec2_64, SGCore::MathUtils::GLMVectorHash<ivec2_64>> tmpOccupiedIndices;
@@ -133,16 +134,22 @@ void OceansEdge::World::buildChunksGrid
             
             auto chunk = *fIt;
             
+            m_currentChunkIndicesCopy.clear();
+            m_currentChunkVerticesCopy.clear();
+            
             if(!chunk) continue;
 
-            if(chunk->m_needsSubData) continue;
+            // if(chunk->m_needsSubData) continue;
 
             ivec2_64 chunkIdx = p;
             
             m_visibleBlocksTypes[chunkIdx].clear();
             
             const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x, 0, chunkIdx.y * Settings::s_chunksSize.z };
-            chunk->m_position = { chunkPosition.x, 0, chunkPosition.z };
+            chunk->m_position.x = chunkPosition.x;
+            chunk->m_position.y = 0;
+            chunk->m_position.z = chunkPosition.z;
+            
             chunk->m_aabb.m_min = chunkPosition;
             chunk->m_aabb.m_max = chunkPosition + glm::vec3 { Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z };
             
@@ -154,8 +161,6 @@ void OceansEdge::World::buildChunksGrid
             // const long endY = Settings::s_chunksSize.y;
             const long endZ = Settings::s_chunksSize.z;
             
-            chunk->m_vertices.clear();
-            chunk->m_indices.clear();
             chunk->m_currentIndex = 0;
             
             /*if(m_yDirDistribution(m_yDirDistributionRange) == 0)
@@ -167,39 +172,40 @@ void OceansEdge::World::buildChunksGrid
                 m_yDir -= 0.0015;
             }*/
             
+            
             auto foundChangedChunkIt = m_changedBlocks.find(chunkIdx);
             
             for(long x = 0; x < endX; ++x)
             {
                 for(long z = 0; z < endZ; ++z)
                 {
-                    double rawY = m_perlinNoise.octave2D_11((chunkPosition.x + (float) x) * 0.01, (chunkPosition.z + (float) z) * 0.01, 2);
-                    double by = rawY * 50; // * interpolate(chunkPosition.x + (float) x, chunkPosition.z + (float) z, rawY) * 0.01;
-                    
-                    const long endY = std::clamp<long>(std::ceil(Settings::s_chunksSize.y / 2 + by), 1, Settings::s_chunksSize.y - 1);
+                    double thisRawY = m_perlinNoise.octave2D_11((chunkPosition.x + (float) x) * 0.01, (chunkPosition.z + (float) z) * 0.01, 2);
+                    const long thisEndY = std::clamp<long>(std::ceil(Settings::s_chunksSize.y / 2 + thisRawY * 50), 1, Settings::s_chunksSize.y - 1);
                     
                     for(long y = 0; y < Settings::s_chunksSize.y; ++y)
                     {
-                        auto& blockData = m_chunkTmpBlocks[x][y][z]; // chunk->m_blocks[x][y][z];
+                        auto& blockType = m_chunkTmpBlocks[x][y][z]; // chunk->m_blocks[x][y][z];
                         
                         if(foundChangedChunkIt != m_changedBlocks.end())
                         {
                             auto findChangedBlock = foundChangedChunkIt->second.find({ x, y, z });
                             if(findChangedBlock != foundChangedChunkIt->second.end())
                             {
-                                blockData = findChangedBlock->second;
+                                blockType = findChangedBlock->second;
                                 std::cout << "sdfsfdfdfgdf" << std::endl;
                                 continue;
                             }
                         }
                         
-                        if(y < endY)
+                        bool isYLowerThanEnd = y < thisEndY;
+                        
+                        if(isYLowerThanEnd)
                         {
-                            blockData = BlocksTypes::OEB_MUD_WITH_GRASS;
+                            blockType = BlocksTypes::OEB_MUD_WITH_GRASS;
                         }
                         else
                         {
-                            blockData = BlocksTypes::OEB_AIR;
+                            blockType = BlocksTypes::OEB_AIR;
                         }
                     }
                 }
@@ -278,18 +284,74 @@ void OceansEdge::World::buildChunksGrid
                     }
                 }
             }
-
+            
+            {
+                std::lock_guard currentChunkBuffersGuard(chunk->m_buffersChangeMutex);
+                
+                chunk->m_indices = m_currentChunkIndicesCopy;
+                chunk->m_vertices = m_currentChunkVerticesCopy;
+            }
+            
             chunk->m_needsSubData = true;
             
             m_lastOccupiedIndices.emplace(p, chunk);
             
-            fIt = m_freeChunksEntities.erase(fIt);
+            m_freeChunksEntities.erase(fIt);
         }
     }
+    
+    // now fill extreme blocks of chunks
+    /*for(auto& blocksPair : m_visibleBlocksTypes)
+    {
+        auto& curChunk = m_lastOccupiedIndices[blocksPair.first];
+        
+        if(!curChunk) continue;
+        
+        m_currentChunkIndicesCopy.clear();
+        m_currentChunkVerticesCopy.clear();
+        
+        for(auto& block : blocksPair.second)
+        {
+            // block is on left of chunk
+            if(block.m_indices.x == 0)
+            {
+                ivec2_64 leftChunkIndices = { blocksPair.first.x - 1, blocksPair.first.y };
+                
+                auto foundChunkIt = m_visibleBlocksTypes.find(leftChunkIndices);
+                if(foundChunkIt != m_visibleBlocksTypes.end())
+                {
+                    ivec3_16 blockIndices = { Settings::s_chunksSize.x - 1, block.m_indices.y, block.m_indices.z };
+                    
+                    auto foundVisibleBlockIt = std::find_if(foundChunkIt->second.begin(), foundChunkIt->second.end(), [&blockIndices](const BlockData& blockData) {
+                        return blockIndices == blockData.m_indices;
+                    });
+                    
+                    if(foundVisibleBlockIt == foundChunkIt->second.end())
+                    {
+                        ivec3_32 blockPos = { curChunk->m_position.x + block.m_indices.x,
+                                              curChunk->m_position.y + block.m_indices.y,
+                                              curChunk->m_position.z + block.m_indices.z };
+                        
+                        addBlockLeftSideVertices(block.m_indices, curChunk, nullptr, block.m_type);
+                    }
+                }
+            }
+        }
+        
+        {
+            std::lock_guard currentChunkBuffersGuard(curChunk->m_buffersChangeMutex);
+            
+            curChunk->m_indices.insert(curChunk->m_indices.end(), m_currentChunkIndicesCopy.begin(), m_currentChunkIndicesCopy.end());
+            curChunk->m_vertices.insert(curChunk->m_vertices.end(), m_currentChunkVerticesCopy.begin(), m_currentChunkVerticesCopy.end());
+        }
+        
+        // curChunk->m_needsSubData = true;
+    }*/
     
     // =============================
     
     auto playerTransform = scene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(m_playerEntity);
+    auto& localPlayer = scene->getECSRegistry().get<LocalPlayer>(m_playerEntity);
     auto debugDraw = scene->getSystem<SGCore::DebugDraw>();
     
     // std::cout << playerTransform->m_ownTransform.m_forward << std::endl;
@@ -309,11 +371,13 @@ void OceansEdge::World::buildChunksGrid
         
         for(auto& p : m_visibleBlocksTypes)
         {
-            if(!m_lastOccupiedIndices[p.first]) continue;
+            auto foundChunk = m_lastOccupiedIndices.find(p.first);
+            
+            if(foundChunk == m_lastOccupiedIndices.end()) continue;
             
             // td::cout << "sddf" << std::endl;
             
-            glm::vec3 chunkPos = m_lastOccupiedIndices[p.first]->m_position;
+            glm::vec3 chunkPos = foundChunk->second->m_position;
             
             for(auto& blockData : p.second)
             {
@@ -344,18 +408,20 @@ void OceansEdge::World::buildChunksGrid
             }
         }
         
-        if(foundNearestBlockData)
+        auto foundNearestChunkIt = m_lastOccupiedIndices.find(foundNearestBlockChunk);
+        
+        if(foundNearestBlockData && foundNearestChunkIt != m_lastOccupiedIndices.end())
         {
             if(lmbPressed)
             {
                 m_changedBlocks[foundNearestBlockChunk][foundNearestBlockData->m_indices] = BlocksTypes::OEB_AIR;
-                m_freeChunksEntities.insert(m_lastOccupiedIndices[foundNearestBlockChunk]);
+                m_freeChunksEntities.insert(foundNearestChunkIt->second);
                 m_lastOccupiedIndices.erase(foundNearestBlockChunk);
             }
             
             if(rmbPressed)
             {
-                glm::vec3 chunkPos = m_lastOccupiedIndices[foundNearestBlockChunk]->m_position;
+                glm::vec3 chunkPos = foundNearestChunkIt->second->m_position;
                 
                 ivec3_16 blockToPutIdx = foundNearestBlockData->m_indices;
                 ivec2_64 chunkToPutIdx = foundNearestBlockChunk;
@@ -483,9 +549,13 @@ void OceansEdge::World::buildChunksGrid
                     }
                 }
                 
-                m_changedBlocks[chunkToPutIdx][blockToPutIdx] = BlocksTypes::OEB_MUD_WITH_GRASS;
-                m_freeChunksEntities.insert(m_lastOccupiedIndices[chunkToPutIdx]);
-                m_lastOccupiedIndices.erase(chunkToPutIdx);
+                m_changedBlocks[chunkToPutIdx][blockToPutIdx] = localPlayer.m_currentSelectedBlockType;
+                auto chunkToUpdateIt = m_lastOccupiedIndices.find(chunkToPutIdx);
+                if(chunkToUpdateIt != m_lastOccupiedIndices.end())
+                {
+                    m_freeChunksEntities.insert(chunkToUpdateIt->second);
+                    m_lastOccupiedIndices.erase(chunkToPutIdx);
+                }
             }
         }
     }
@@ -529,24 +599,24 @@ void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const 
     rdData |= face << 12;
     rdData |= blockType32 << 15;
     
-    chunk->m_vertices.push_back(ldData);
-    chunk->m_vertices.push_back(ld.y);
+    m_currentChunkVerticesCopy.push_back(ldData);
+    m_currentChunkVerticesCopy.push_back(ld.y);
     
-    chunk->m_vertices.push_back(ltData);
-    chunk->m_vertices.push_back(lt.y);
+    m_currentChunkVerticesCopy.push_back(ltData);
+    m_currentChunkVerticesCopy.push_back(lt.y);
     
-    chunk->m_vertices.push_back(rtData);
-    chunk->m_vertices.push_back(rt.y);
+    m_currentChunkVerticesCopy.push_back(rtData);
+    m_currentChunkVerticesCopy.push_back(rt.y);
     
-    chunk->m_vertices.push_back(rdData);
-    chunk->m_vertices.push_back(rd.y);
+    m_currentChunkVerticesCopy.push_back(rdData);
+    m_currentChunkVerticesCopy.push_back(rd.y);
     
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 1);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 3);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
     
     chunk->m_currentIndex += 4;
 }
@@ -587,24 +657,24 @@ void OceansEdge::World::addBlockBottomSideVertices(const ivec3_32& blockPos, con
     rdData |= face << 12;
     rdData |= blockType32 << 15;
     
-    chunk->m_vertices.push_back(ldData);
-    chunk->m_vertices.push_back(ld.y);
+    m_currentChunkVerticesCopy.push_back(ldData);
+    m_currentChunkVerticesCopy.push_back(ld.y);
     
-    chunk->m_vertices.push_back(ltData);
-    chunk->m_vertices.push_back(lt.y);
+    m_currentChunkVerticesCopy.push_back(ltData);
+    m_currentChunkVerticesCopy.push_back(lt.y);
     
-    chunk->m_vertices.push_back(rtData);
-    chunk->m_vertices.push_back(rt.y);
+    m_currentChunkVerticesCopy.push_back(rtData);
+    m_currentChunkVerticesCopy.push_back(rt.y);
     
-    chunk->m_vertices.push_back(rdData);
-    chunk->m_vertices.push_back(rd.y);
+    m_currentChunkVerticesCopy.push_back(rdData);
+    m_currentChunkVerticesCopy.push_back(rd.y);
     
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 1);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 3);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
     
     chunk->m_currentIndex += 4;
 }
@@ -648,24 +718,24 @@ void OceansEdge::World::addBlockFaceSideVertices(const ivec3_32& blockPos, const
     rdData |= face << 12;
     rdData |= blockType32 << 15;
     
-    chunk->m_vertices.push_back(ldData);
-    chunk->m_vertices.push_back(ld.y);
+    m_currentChunkVerticesCopy.push_back(ldData);
+    m_currentChunkVerticesCopy.push_back(ld.y);
     
-    chunk->m_vertices.push_back(ltData);
-    chunk->m_vertices.push_back(lt.y);
+    m_currentChunkVerticesCopy.push_back(ltData);
+    m_currentChunkVerticesCopy.push_back(lt.y);
     
-    chunk->m_vertices.push_back(rtData);
-    chunk->m_vertices.push_back(rt.y);
+    m_currentChunkVerticesCopy.push_back(rtData);
+    m_currentChunkVerticesCopy.push_back(rt.y);
     
-    chunk->m_vertices.push_back(rdData);
-    chunk->m_vertices.push_back(rd.y);
+    m_currentChunkVerticesCopy.push_back(rdData);
+    m_currentChunkVerticesCopy.push_back(rd.y);
     
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 1);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 3);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
     
     chunk->m_currentIndex += 4;
 }
@@ -706,24 +776,24 @@ void OceansEdge::World::addBlockBackSideVertices(const ivec3_32& blockPos, const
     rdData |= face << 12;
     rdData |= blockType32 << 15;
     
-    chunk->m_vertices.push_back(ldData);
-    chunk->m_vertices.push_back(ld.y);
+    m_currentChunkVerticesCopy.push_back(ldData);
+    m_currentChunkVerticesCopy.push_back(ld.y);
     
-    chunk->m_vertices.push_back(ltData);
-    chunk->m_vertices.push_back(lt.y);
+    m_currentChunkVerticesCopy.push_back(ltData);
+    m_currentChunkVerticesCopy.push_back(lt.y);
     
-    chunk->m_vertices.push_back(rtData);
-    chunk->m_vertices.push_back(rt.y);
+    m_currentChunkVerticesCopy.push_back(rtData);
+    m_currentChunkVerticesCopy.push_back(rt.y);
     
-    chunk->m_vertices.push_back(rdData);
-    chunk->m_vertices.push_back(rd.y);
+    m_currentChunkVerticesCopy.push_back(rdData);
+    m_currentChunkVerticesCopy.push_back(rd.y);
     
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 1);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 3);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
     
     chunk->m_currentIndex += 4;
 }
@@ -766,24 +836,24 @@ void OceansEdge::World::addBlockLeftSideVertices(const ivec3_32& blockPos, const
     rdData |= face << 12;
     rdData |= blockType32 << 15;
     
-    chunk->m_vertices.push_back(ldData);
-    chunk->m_vertices.push_back(ld.y);
+    m_currentChunkVerticesCopy.push_back(ldData);
+    m_currentChunkVerticesCopy.push_back(ld.y);
     
-    chunk->m_vertices.push_back(ltData);
-    chunk->m_vertices.push_back(lt.y);
+    m_currentChunkVerticesCopy.push_back(ltData);
+    m_currentChunkVerticesCopy.push_back(lt.y);
     
-    chunk->m_vertices.push_back(rtData);
-    chunk->m_vertices.push_back(rt.y);
+    m_currentChunkVerticesCopy.push_back(rtData);
+    m_currentChunkVerticesCopy.push_back(rt.y);
     
-    chunk->m_vertices.push_back(rdData);
-    chunk->m_vertices.push_back(rd.y);
+    m_currentChunkVerticesCopy.push_back(rdData);
+    m_currentChunkVerticesCopy.push_back(rd.y);
     
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 1);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 3);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
     
     chunk->m_currentIndex += 4;
 }
@@ -824,24 +894,24 @@ void OceansEdge::World::addBlockRightSideVertices(const ivec3_32& blockPos, cons
     rdData |= face << 12;
     rdData |= blockType32 << 15;
     
-    chunk->m_vertices.push_back(ldData);
-    chunk->m_vertices.push_back(ld.y);
+    m_currentChunkVerticesCopy.push_back(ldData);
+    m_currentChunkVerticesCopy.push_back(ld.y);
     
-    chunk->m_vertices.push_back(ltData);
-    chunk->m_vertices.push_back(lt.y);
+    m_currentChunkVerticesCopy.push_back(ltData);
+    m_currentChunkVerticesCopy.push_back(lt.y);
     
-    chunk->m_vertices.push_back(rtData);
-    chunk->m_vertices.push_back(rt.y);
+    m_currentChunkVerticesCopy.push_back(rtData);
+    m_currentChunkVerticesCopy.push_back(rt.y);
     
-    chunk->m_vertices.push_back(rdData);
-    chunk->m_vertices.push_back(rd.y);
+    m_currentChunkVerticesCopy.push_back(rdData);
+    m_currentChunkVerticesCopy.push_back(rd.y);
     
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 1);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 0);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 3);
-    chunk->m_indices.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 1);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 0);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 3);
+    m_currentChunkIndicesCopy.push_back(chunk->m_currentIndex + 2);
     
     chunk->m_currentIndex += 4;
 }

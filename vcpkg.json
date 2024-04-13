@@ -45,6 +45,6 @@
   }, {
     "name" : "glad",
     "version>=" : "0.1.36",
-    "features": ["extensions"]
+    "features" : [ "extensions" ]
   } ]
 }

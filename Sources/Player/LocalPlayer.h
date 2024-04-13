@@ -9,6 +9,8 @@ namespace OceansEdge
 {
     struct LocalPlayer
     {
+        std::uint16_t m_currentSelectedBlockType = BlocksTypes::OEB_MUD_WITH_GRASS;
+        
     private:
         bool m_dummy = false;
     };

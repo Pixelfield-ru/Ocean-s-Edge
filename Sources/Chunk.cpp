@@ -70,8 +70,15 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     if(!subPassShader) return;
     
-    size_t verticesCount = std::min<size_t>(m_vertices.size() / 2, m_maxVerticesCount);
-    size_t indicesCount = std::min<size_t>(m_indices.size(), m_maxIndicesCount);
+    size_t verticesCount = 0;
+    size_t indicesCount = 0;
+    
+    {
+        std::lock_guard buffersGuard(m_buffersChangeMutex);
+        
+        verticesCount = std::min<size_t>(m_vertices.size() / 2, m_maxVerticesCount);
+        indicesCount = std::min<size_t>(m_indices.size(), m_maxIndicesCount);
+    }
     
     subPassShader->bind();
     
@@ -91,7 +98,12 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
             subPassShader->useUniformBuffer(atmosphereUpdater->m_uniformBuffer);
         }
         
-        subPassShader->useVectorf("u_chunkPosition", m_position);
+        glm::vec3 chunkPos;
+        chunkPos.x = m_position.x;
+        chunkPos.y = m_position.y;
+        chunkPos.z = m_position.z;
+        
+        subPassShader->useVectorf("u_chunkPosition", chunkPos);
         Resources::getBlocksAtlas()->bind(0);
         subPassShader->useTextureBlock("u_blocksAtlas", 0);
         
@@ -102,16 +114,21 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
                                              indicesCount);
     });
     
-    if(m_needsSubData && m_vertices.size() >= verticesCount * 2)
+    if(m_needsSubData)
     {
-        m_positionsVertexBuffer->bind();
-        m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount * 2, 0);
-    }
-    
-    if(m_needsSubData && m_indices.size() >= indicesCount)
-    {
-        m_indicesBuffer->bind();
-        m_indicesBuffer->subData(m_indices.data(), indicesCount, 0);
+        std::lock_guard buffersGuard(m_buffersChangeMutex);
+        
+        if(m_vertices.size() >= verticesCount * 2)
+        {
+            m_positionsVertexBuffer->bind();
+            m_positionsVertexBuffer->subData(m_vertices.data(), verticesCount * 2, 0);
+        }
+        
+        if(m_indices.size() >= indicesCount)
+        {
+            m_indicesBuffer->bind();
+            m_indicesBuffer->subData(m_indices.data(), indicesCount, 0);
+        }
     }
     
     m_needsSubData = false;
@@ -131,8 +148,10 @@ void OceansEdge::Chunk::onRenderPipelineSet() noexcept
             Settings::getShadersPaths()["ChunkShader"].getCurrentRealization()));
 }
 
-bool OceansEdge::Chunk::isBuffersHaveFreeSpace() const noexcept
+bool OceansEdge::Chunk::isBuffersHaveFreeSpace() noexcept
 {
+    std::lock_guard buffersGuard(m_buffersChangeMutex);
+    
     bool val = m_vertices.size() / 2 + 4 <= m_maxVerticesCount &&
                m_indices.size() <= m_maxIndicesCount;
     

@@ -58,6 +58,7 @@ extern "C" {
 #include "OEPhysicalEntity.h"
 #include "Defines.h"
 #include "Resources.h"
+#include "PlayerController.h"
 
 void OceansEdge::GameMain::init()
 {
@@ -91,9 +92,11 @@ void OceansEdge::GameMain::init()
     
     auto dayNightCycleSystem = SGCore::MakeRef<DayNightCycleSystem>();
     auto worldChunksUpdater = SGCore::MakeRef<WorldChunksUpdater>();
+    auto playerControllerSystem = SGCore::MakeRef<PlayerController>();
     dayNightCycleSystem->setScene(m_worldScene);
     m_worldScene->addSystem(dayNightCycleSystem);
     m_worldScene->addSystem(worldChunksUpdater);
+    m_worldScene->addSystem(playerControllerSystem);
     
     // -----------------------------------------------------------
     

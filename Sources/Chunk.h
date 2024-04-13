@@ -39,7 +39,10 @@ namespace OceansEdge
         std::vector<std::uint32_t> m_indices;
         std::vector<std::int32_t> m_vertices;
         
-        glm::vec3 m_position { 0, 0, 0 };
+        std::mutex m_buffersChangeMutex;
+        
+        afvec32 m_position { 0, 0, 0 };
+        // glm::vec3 m_position { 0, 0, 0 };
         
         SGCore::Ref<SGCore::IVertexArray> m_vertexArray;
         SGCore::Ref<SGCore::IVertexBuffer> m_positionsVertexBuffer;
@@ -53,7 +56,7 @@ namespace OceansEdge
         const size_t m_maxVerticesCount = 150'000;
         const size_t m_maxIndicesCount = m_maxVerticesCount + (m_maxVerticesCount / 3) + 10;
         
-        bool isBuffersHaveFreeSpace() const noexcept;
+        bool isBuffersHaveFreeSpace() noexcept;
 
         void onRenderPipelineSet() noexcept;
 
