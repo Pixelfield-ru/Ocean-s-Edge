@@ -5,14 +5,18 @@
  add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
  add_definitions(-DNOMINMAX)
 
- IF(NOT MSVC)
-     add_definitions(-DSTB_IMAGE_WRITE_IMPLEMENTATION)
- ENDIF()
-
  add_definitions(-DENTT_USE_ATOMIC)
  add_definitions(-DBOOST_STACKTRACE_USE_ADDR2LINE)
  add_definitions(-DBOOST_STACKTRACE_USE_BACKTRACE)
  add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
+
+ get_filename_component(VCPKG_CMAKE_ROOT ${CMAKE_TOOLCHAIN_FILE} DIRECTORY)
+ get_filename_component(VCPKG_CMAKE_ROOT ${VCPKG_CMAKE_ROOT} DIRECTORY)
+ get_filename_component(VCPKG_CMAKE_ROOT ${VCPKG_CMAKE_ROOT} DIRECTORY)
+
+ set(VCPKG_ROOT ${VCPKG_CMAKE_ROOT})
+
+ list(APPEND CMAKE_PREFIX_PATH ${VCPKG_ROOT}/installed/x64-linux/share/openal-soft)
 
  set(CMAKE_CXX_STANDARD 23)
 
@@ -74,6 +78,7 @@
  set(SG_RESOURCES_COPY_TEXTURES ON)
  set(SG_RESOURCES_COPY_UI ON)
  set(SG_RESOURCES_COPY_FONTS ON)
+ set(SG_RESOURCES_COPY_AUDIO ON)
 
  add_subdirectory(${SUNGEAR_DIR}/Externals Externals)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
@@ -177,8 +182,20 @@
                  COMMAND ${CMAKE_COMMAND} -E copy_directory
                  ${CMAKE_SOURCE_DIR}/Resources/OEResources/fonts
                  ${CMAKE_BINARY_DIR}/OEResources/fonts
-                 COMMENT "Copying SGFonts into binary directory")
+                 COMMENT "Copying OEFonts into binary directory")
 
          add_dependencies(${PROJECT_NAME} OEFontsCopy)
+     endif ()
+ endif ()
+
+ if (${SG_RESOURCES_COPY_AUDIO})
+     if(EXISTS ${CMAKE_SOURCE_DIR}/Resources/OEResources/audio)
+         add_custom_target(OEAudioCopy ALL
+                 COMMAND ${CMAKE_COMMAND} -E copy_directory
+                 ${CMAKE_SOURCE_DIR}/Resources/OEResources/audio
+                 ${CMAKE_BINARY_DIR}/OEResources/audio
+                 COMMENT "Copying OEAudio into binary directory")
+
+         add_dependencies(${PROJECT_NAME} OEAudioCopy)
      endif ()
  endif ()

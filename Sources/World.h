@@ -18,6 +18,7 @@
 #include "Chunk.h"
 #include "SGUtils/Noise/PerlinNoise.hpp"
 #include "PhysicalChunk.h"
+#include "SungearCandidates/EntitiesPool.h"
 
 namespace OceansEdge
 {
@@ -37,6 +38,8 @@ namespace OceansEdge
         SGCore::entity_t getPlayerEntity() const noexcept;
         
     private:
+        SGCore::EntitiesPool m_audioEntitiesPool;
+        
         std::uniform_int_distribution<std::mt19937::result_type> m_yDirDistribution;
         
         SGCore::Ref<SGCore::InputListener> m_playerInputListener = SGCore::MakeRef<SGCore::InputListener>();

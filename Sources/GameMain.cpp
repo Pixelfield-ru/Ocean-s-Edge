@@ -121,10 +121,10 @@ void OceansEdge::GameMain::init()
             skyboxEntities.push_back(entity);
         });
         
-        SGCore::Mesh& skyboxMesh = m_worldScene->getECSRegistry().get<SGCore::Mesh>(skyboxEntities[2]);
-        SGCore::ShaderComponent& shaderComponent = m_worldScene->getECSRegistry().emplace<SGCore::ShaderComponent>(skyboxEntities[2]);
-        SGCore::Atmosphere& atmosphereScattering = m_worldScene->getECSRegistry().emplace<SGCore::Atmosphere>(skyboxEntities[2]);
-        auto& atmosphereIgnoreOctrees = m_worldScene->getECSRegistry().emplace<SGCore::IgnoreOctrees>(skyboxEntities[2]);
+        SGCore::Mesh& skyboxMesh = m_worldScene->getECSRegistry()->get<SGCore::Mesh>(skyboxEntities[2]);
+        SGCore::ShaderComponent& shaderComponent = m_worldScene->getECSRegistry()->emplace<SGCore::ShaderComponent>(skyboxEntities[2]);
+        SGCore::Atmosphere& atmosphereScattering = m_worldScene->getECSRegistry()->emplace<SGCore::Atmosphere>(skyboxEntities[2]);
+        auto& atmosphereIgnoreOctrees = m_worldScene->getECSRegistry()->emplace<SGCore::IgnoreOctrees>(skyboxEntities[2]);
         // atmosphereScattering.m_sunRotation.z = 90.0;
         /*skyboxMesh.m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_SKYBOX,
                                                                standardCubemap
@@ -134,13 +134,13 @@ void OceansEdge::GameMain::init()
 
         //skyboxMesh.m_base.m_meshData->m_material->getShader()->removeSubPass("GeometryPass");
         shaderComponent.m_shader->addSubPassShadersAndCompile(
-            SGCore::AssetManager::loadAsset<SGCore::FileAsset>(
+            SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>(
                 Settings::getShadersPaths()["FoggedSkyboxShader"].getCurrentRealization()));
         shaderComponent.m_isCustomShader = true;
         // SGCore::ShadersUtils::loadShader(shaderComponent, "SkyboxShader");
         skyboxMesh.m_base.m_meshDataRenderInfo.m_enableFacesCulling = false;
         
-        auto skyboxTransform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(skyboxEntities[2]);
+        auto skyboxTransform = m_worldScene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(skyboxEntities[2]);
         // auto transformComponent = skyboxEntities[2]->getComponent<SGCore::Transform>();
         
         skyboxTransform->m_ownTransform.m_scale = { 1150, 1150, 1150 };
@@ -149,10 +149,10 @@ void OceansEdge::GameMain::init()
     // -----------------------------------------------------------
     
     {
-        auto uiCameraEntity = m_worldScene->getECSRegistry().create();
-        SGCore::UICamera& uiCameraEntityCamera = m_worldScene->getECSRegistry().emplace<SGCore::UICamera>(uiCameraEntity);
-        auto uiCameraEntityTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity, SGCore::MakeRef<SGCore::Transform>());
-        auto& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::RenderingBase>>(uiCameraEntity,
+        auto uiCameraEntity = m_worldScene->getECSRegistry()->create();
+        SGCore::UICamera& uiCameraEntityCamera = m_worldScene->getECSRegistry()->emplace<SGCore::UICamera>(uiCameraEntity);
+        auto uiCameraEntityTransform = m_worldScene->getECSRegistry()->emplace<SGCore::Ref<SGCore::Transform>>(uiCameraEntity, SGCore::MakeRef<SGCore::Transform>());
+        auto& uiCameraEntityRenderingBase = m_worldScene->getECSRegistry()->emplace<SGCore::Ref<SGCore::RenderingBase>>(uiCameraEntity,
                 SGCore::MakeRef<SGCore::RenderingBase>());
         
         uiCameraEntityRenderingBase->m_left = 0;
@@ -183,9 +183,9 @@ void OceansEdge::GameMain::init()
         timesNewRomanFont_height128_eng->parse({ '.', '!', '?', ')' });
         timesNewRomanFont_height128_eng->createAtlas();
         
-        auto textEntity = m_worldScene->getECSRegistry().create();
-        SGCore::Text& helloWorldUIText = m_worldScene->getECSRegistry().emplace<SGCore::Text>(textEntity);
-        auto helloWorldUITextTransform = m_worldScene->getECSRegistry().emplace<SGCore::Ref<SGCore::Transform>>(textEntity, SGCore::MakeRef<SGCore::Transform>());
+        auto textEntity = m_worldScene->getECSRegistry()->create();
+        SGCore::Text& helloWorldUIText = m_worldScene->getECSRegistry()->emplace<SGCore::Text>(textEntity);
+        auto helloWorldUITextTransform = m_worldScene->getECSRegistry()->emplace<SGCore::Ref<SGCore::Transform>>(textEntity, SGCore::MakeRef<SGCore::Transform>());
         helloWorldUITextTransform->m_ownTransform.m_scale = { 1.0, 1.0, 1 };
         helloWorldUITextTransform->m_ownTransform.m_position = { 0.0, -50.0, 0 };
         

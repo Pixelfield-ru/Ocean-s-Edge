@@ -12,7 +12,7 @@ void OceansEdge::DayNightCycleSystem::fixedUpdate(const double& dt, const double
     auto lockedScene = m_scene.lock();
     if(!lockedScene) return;
     
-    auto atmospheresView = lockedScene->getECSRegistry().view<SGCore::Atmosphere>();
+    auto atmospheresView = lockedScene->getECSRegistry()->view<SGCore::Atmosphere>();
     
     atmospheresView.each([this](SGCore::Atmosphere& atmosphere) {
         atmosphere.m_sunRotation.x += m_cycleSpeed;

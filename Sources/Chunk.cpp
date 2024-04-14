@@ -86,7 +86,7 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     auto atmosphereUpdater = scene->getSystem<AtmosphereUpdater>();
     
-    auto camerasView = registry.view<Ref<Camera3D>, Ref<RenderingBase>, Ref<Transform>>();
+    auto camerasView = registry->view<Ref<Camera3D>, Ref<RenderingBase>, Ref<Transform>>();
     
     camerasView.each([&verticesCount, &indicesCount, &subPassShader, &atmosphereUpdater, this](Ref<Camera3D> camera3D,
             Ref<RenderingBase> renderingBase, Ref<Transform> transform) {
@@ -136,15 +136,13 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
 
 void OceansEdge::Chunk::onRenderPipelineSet() noexcept
 {
-    using namespace SGCore;
-    
-    auto renderPipeline = RenderPipelinesManager::getCurrentRenderPipeline();
+    auto renderPipeline = SGCore::RenderPipelinesManager::getCurrentRenderPipeline();
     
     if(!renderPipeline) return;
     
     // std::cout << Settings::getShadersPaths()["ChunkShader"].m_GLSL4RealizationPath << std::endl;
     
-    m_shader->addSubPassShadersAndCompile(AssetManager::loadAsset<FileAsset>(
+    m_shader->addSubPassShadersAndCompile(SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>(
             Settings::getShadersPaths()["ChunkShader"].getCurrentRealization()));
 }
 

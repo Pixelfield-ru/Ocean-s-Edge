@@ -17,7 +17,7 @@ void OceansEdge::WorldChunksUpdater::parallelUpdate(const double& dt, const doub
 
     auto& registry = lockedScene->getECSRegistry();
     
-    auto playerTransform = registry.get<SGCore::Ref<SGCore::Transform>>(GameMain::getCurrentWorld()->getPlayerEntity());
+    auto playerTransform = registry->get<SGCore::Ref<SGCore::Transform>>(GameMain::getCurrentWorld()->getPlayerEntity());
     
     GameMain::getCurrentWorld()->buildChunksGrid(lockedScene, playerTransform->m_ownTransform.m_position, GameMain::getCurrentWorld()->m_seed);
 }

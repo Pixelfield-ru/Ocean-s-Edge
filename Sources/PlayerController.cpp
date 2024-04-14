@@ -3,6 +3,8 @@
 //
 
 #include <SGCore/Input/InputManager.h>
+#include <SGCore/Transformations/Transform.h>
+#include <SGCore/Audio/AudioListener.h>
 #include "PlayerController.h"
 #include "GameMain.h"
 #include "Player/LocalPlayer.h"
@@ -20,7 +22,8 @@ void OceansEdge::PlayerController::update(const double& dt, const double& fixedD
     
     auto& registry = lockedScene->getECSRegistry();
     
-    auto& localPlayer = registry.get<LocalPlayer>(GameMain::getCurrentWorld()->getPlayerEntity());
+    auto& localPlayer = registry->get<LocalPlayer>(GameMain::getCurrentWorld()->getPlayerEntity());
+    auto playerTransform = registry->get<SGCore::Ref<SGCore::Transform>>(GameMain::getCurrentWorld()->getPlayerEntity());
     
     if(m_playerInputListener->keyboardKeyPressed(SGCore::KeyboardKey::KEY_1))
     {
@@ -34,4 +37,6 @@ void OceansEdge::PlayerController::update(const double& dt, const double& fixedD
     {
         localPlayer.m_currentSelectedBlockType = BlocksTypes::OEB_STONE;
     }
+    
+    SGCore::AudioListener::setPosition(playerTransform->m_ownTransform.m_position);
 }

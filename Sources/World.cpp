@@ -36,20 +36,20 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
     
     // ========================================================================
     
-    m_playerEntity = registry.create();
-    SGCore::EntityBaseInfo& cameraBaseInfo = registry.emplace<SGCore::EntityBaseInfo>(m_playerEntity);
+    m_playerEntity = registry->create();
+    SGCore::EntityBaseInfo& cameraBaseInfo = registry->emplace<SGCore::EntityBaseInfo>(m_playerEntity);
     cameraBaseInfo.setRawName("SGMainCamera");
-    registry.emplace<LocalPlayer>(m_playerEntity);
-    registry.emplace<SGCore::Ref<OEPhysicalEntity>>(m_playerEntity);
+    registry->emplace<LocalPlayer>(m_playerEntity);
+    registry->emplace<SGCore::Ref<OEPhysicalEntity>>(m_playerEntity);
     
-    auto playerTransform = registry.emplace<SGCore::Ref<SGCore::Transform>>(m_playerEntity,
+    auto playerTransform = registry->emplace<SGCore::Ref<SGCore::Transform>>(m_playerEntity,
                                                                             SGCore::MakeRef<SGCore::Transform>());
     playerTransform->m_ownTransform.m_position = { 0.0, 500, 0 };
     
-    auto& cameraEntityCamera = registry.emplace<SGCore::Ref<SGCore::Camera3D>>(m_playerEntity,
+    auto& cameraEntityCamera = registry->emplace<SGCore::Ref<SGCore::Camera3D>>(m_playerEntity,
                                                                                SGCore::MakeRef<SGCore::Camera3D>());
-    SGCore::Controllable3D& cameraEntityControllable = registry.emplace<SGCore::Controllable3D>(m_playerEntity);
-    auto& cameraRenderingBase = registry.emplace<SGCore::Ref<SGCore::RenderingBase>>(m_playerEntity,
+    SGCore::Controllable3D& cameraEntityControllable = registry->emplace<SGCore::Controllable3D>(m_playerEntity);
+    auto& cameraRenderingBase = registry->emplace<SGCore::Ref<SGCore::RenderingBase>>(m_playerEntity,
                                                                                      SGCore::MakeRef<SGCore::RenderingBase>());
     
     // ========================================================================
@@ -350,8 +350,8 @@ void OceansEdge::World::buildChunksGrid
     
     // =============================
     
-    auto playerTransform = scene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(m_playerEntity);
-    auto& localPlayer = scene->getECSRegistry().get<LocalPlayer>(m_playerEntity);
+    auto playerTransform = scene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(m_playerEntity);
+    auto& localPlayer = scene->getECSRegistry()->get<LocalPlayer>(m_playerEntity);
     auto debugDraw = scene->getSystem<SGCore::DebugDraw>();
     
     // std::cout << playerTransform->m_ownTransform.m_forward << std::endl;
