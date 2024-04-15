@@ -39,4 +39,5 @@ void OceansEdge::PlayerController::update(const double& dt, const double& fixedD
     }
     
     SGCore::AudioListener::setPosition(playerTransform->m_ownTransform.m_position);
+    SGCore::AudioListener::setOrientation(playerTransform->m_ownTransform.m_forward, playerTransform->m_ownTransform.m_up);
 }

@@ -37,6 +37,16 @@ namespace OceansEdge
                 "stone2_brake",
                 "stone3_brake"
         };
+        
+        static inline std::vector<std::string> m_ambientBuffersNames = {
+                "amb_bird0",
+                "amb_bird1",
+                "amb_bird2",
+                "amb_bird3",
+                "amb_bird4",
+                "amb_bird5",
+                "amb_bird6"
+        };
 
 
         SG_NOINLINE static auto getBlocksAtlas() noexcept
@@ -61,6 +71,14 @@ namespace OceansEdge
             m_audioBuffers["stone1_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone1.ogg");
             m_audioBuffers["stone2_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone2.ogg");
             m_audioBuffers["stone3_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone3.ogg");
+            
+            m_audioBuffers["amb_bird0"] = createAudioBufferByPath("../OEResources/audio/ambient/b1.ogg");
+            m_audioBuffers["amb_bird1"] = createAudioBufferByPath("../OEResources/audio/ambient/b2.ogg");
+            m_audioBuffers["amb_bird2"] = createAudioBufferByPath("../OEResources/audio/ambient/b3.ogg");
+            m_audioBuffers["amb_bird3"] = createAudioBufferByPath("../OEResources/audio/ambient/b4.ogg");
+            m_audioBuffers["amb_bird4"] = createAudioBufferByPath("../OEResources/audio/ambient/b5.ogg");
+            m_audioBuffers["amb_bird5"] = createAudioBufferByPath("../OEResources/audio/ambient/b6.ogg");
+            m_audioBuffers["amb_bird6"] = createAudioBufferByPath("../OEResources/audio/ambient/b7.ogg");
         }
         
     private:

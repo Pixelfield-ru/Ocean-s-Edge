@@ -16,7 +16,7 @@ extern "C" {
 #include <SGUtils/CrashHandler/Platform.h>
 
 #include <entt/entity/entity.hpp>
-#include <SGCore/Render/PostProcessFrameReceiver.h>
+#include <SGCore/Render/LayeredFrameReceiver.h>
 #include <SGCore/Transformations/Transform.h>
 #include <SGCore/Scene/EntityBaseInfo.h>
 #include <SGCore/Main/CoreMain.h>
@@ -44,8 +44,7 @@ extern "C" {
 #include <SGCore/Render/DisableMeshGeometryPass.h>
 #include <SGCore/Render/Batching/Batch.h>
 #include <SGCore/Render/ShaderComponent.h>
-#include <SGCore/Render/SpacePartitioning/OctreeCullableInfo.h>
-#include <SGCore/Render/SpacePartitioning/CullableMesh.h>
+#include <SGCore/Render/SpacePartitioning/OctreeCullable.h>
 #include <SGCore/Render/SpacePartitioning/IgnoreOctrees.h>
 #include <SGCore/Threading/ThreadsManager.h>
 
@@ -58,6 +57,7 @@ extern "C" {
 #include "Defines.h"
 #include "Resources.h"
 #include "PlayerController.h"
+#include "AmbientPlayer.h"
 
 void OceansEdge::GameMain::init()
 {
@@ -65,16 +65,8 @@ void OceansEdge::GameMain::init()
     
     SGCore::RenderPipelinesManager::registerRenderPipeline(SGCore::MakeRef<SGCore::PBRRenderPipeline>());
     SGCore::RenderPipelinesManager::setCurrentRenderPipeline<SGCore::PBRRenderPipeline>();
-    
-    auto geniusJPG = SGCore::AssetManager::loadAsset<SGCore::ITexture2D>(
-            "../SGResources/textures/genius.jpg"
-    );
-    
+
     Resources::init();
-    
-    geniusJPG->setRawName("GeniusTexture");
-    
-    geniusJPG->create();
     
     // CREATING WORLD SCENE --------------------------------------
     
@@ -87,10 +79,13 @@ void OceansEdge::GameMain::init()
     auto dayNightCycleSystem = SGCore::MakeRef<DayNightCycleSystem>();
     auto worldChunksUpdater = SGCore::MakeRef<WorldChunksUpdater>();
     auto playerControllerSystem = SGCore::MakeRef<PlayerController>();
-    dayNightCycleSystem->setScene(m_worldScene);
+    auto ambientPlayer = SGCore::MakeRef<AmbientPlayer>();
     m_worldScene->addSystem(dayNightCycleSystem);
     m_worldScene->addSystem(worldChunksUpdater);
     m_worldScene->addSystem(playerControllerSystem);
+    m_worldScene->addSystem(ambientPlayer);
+    
+    m_worldScene->createLayer("test_pp");
     
     // -----------------------------------------------------------
     
@@ -101,11 +96,18 @@ void OceansEdge::GameMain::init()
             "../SGResources/models/standard/cube.obj"
     );
     
-    auto mudWithGrassModel = SGCore::AssetManager::loadAssetWithAlias<SGCore::ModelAsset>(
-            "OEB_MUD_WITH_GRASS",
+    auto cubeModel = SGCore::AssetManager::loadAssetWithAlias<SGCore::ModelAsset>(
+            "model_cube",
             "../SGResources/models/standard/cube.obj"
-            //"../SGResources/models/test/vss/scene.gltf"
     );
+    
+    std::vector<SGCore::entity_t> cubeEntities;
+    cubeModel->m_nodes[0]->addOnScene(m_worldScene, "test_pp", [&cubeEntities](const SGCore::entity_t& entity) {
+        cubeEntities.push_back(entity);
+    });
+    
+    auto cubeTransform = m_worldScene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(cubeEntities[0]);
+    cubeTransform->m_ownTransform.m_position.y = 600.0f;
     
     // INITIALIZING SKYBOX ---------------------------------------
     

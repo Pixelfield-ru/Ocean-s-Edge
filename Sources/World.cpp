@@ -4,8 +4,7 @@
 
 #include <SGCore/Main/CoreGlobals.h>
 #include <SGCore/Render/DisableMeshGeometryPass.h>
-#include <SGCore/Render/SpacePartitioning/OctreeCullableInfo.h>
-#include <SGCore/Render/SpacePartitioning/CullableMesh.h>
+#include <SGCore/Render/SpacePartitioning/OctreeCullable.h>
 #include <SGCore/Transformations/Transform.h>
 #include <SGCore/Scene/Layer.h>
 #include <SGCore/Render/Batching/Batch.h>
@@ -19,6 +18,7 @@
 #include <SGCore/Input/InputManager.h>
 #include <SGUtils/Math/MathPrimitivesUtils.h>
 #include <SGCore/Audio/AudioSource.h>
+#include <SGCore/Render/LayeredFrameReceiver.h>
 
 #include "World.h"
 #include "BlocksTypes.h"
@@ -55,6 +55,9 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
     SGCore::Controllable3D& cameraEntityControllable = registry->emplace<SGCore::Controllable3D>(m_playerEntity);
     auto& cameraRenderingBase = registry->emplace<SGCore::Ref<SGCore::RenderingBase>>(m_playerEntity,
                                                                                      SGCore::MakeRef<SGCore::RenderingBase>());
+    
+    auto& layeredFrameReceiver = registry->emplace<SGCore::LayeredFrameReceiver>(m_playerEntity);
+    
     
     // ========================================================================
     
@@ -670,10 +673,11 @@ void OceansEdge::World::createBlockSound
 
     if(audioSource)
     {
-        glm::vec3 audioPos = { chunk->m_position.x + blockData.m_indices.x,
-                               chunk->m_position.y + blockData.m_indices.y,
-                               chunk->m_position.z + blockData.m_indices.z };
+        glm::vec3 audioPos = { chunk->m_position.x + blockData.m_indices.x + 0.5f,
+                               chunk->m_position.y + blockData.m_indices.y + 0.5f,
+                               chunk->m_position.z + blockData.m_indices.z + 0.5f };
 
+        audioSource->setRolloffFactor(0.5f);
         audioSource->setPosition(audioPos);
         audioSource->attachBuffer(Resources::getAudioBuffersMap()[audioBufferName]);
         audioSource->setState(SGCore::AudioSourceState::SOURCE_PLAYING);
