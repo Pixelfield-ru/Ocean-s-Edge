@@ -34,7 +34,9 @@ namespace OceansEdge
         void prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept;
         
         void buildChunksGrid(const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed);
-        
+
+        void createBlockSound(const SGCore::Ref<Chunk>& chunk, const BlockData& blockData, const std::string& audioBufferName) noexcept;
+
         SGCore::entity_t getPlayerEntity() const noexcept;
         
     private:

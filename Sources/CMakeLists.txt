@@ -16,7 +16,8 @@
 
  set(VCPKG_ROOT ${VCPKG_CMAKE_ROOT})
 
- list(APPEND CMAKE_PREFIX_PATH ${VCPKG_ROOT}/installed/x64-linux/share/openal-soft)
+ #list(APPEND CMAKE_PREFIX_PATH ${VCPKG_ROOT}/installed/x64-linux/share/openal-soft)
+ list(APPEND CMAKE_PREFIX_PATH ${VCPKG_ROOT}/installed/x64-windows/share/openal-soft)
 
  set(CMAKE_CXX_STANDARD 23)
 
@@ -52,9 +53,9 @@
 
  file(GLOB_RECURSE OCEANS_EDGE_SOURCES ../Sources/*.cpp ../Sources/*.h)
 
- set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
+ #set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
  #set(SUNGEAR_DIR "D:/Pixelfield/NativeSungearEngine/NativeSungearEngine")
- #set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine/SungearEngine")
+ set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine/SungearEngine")
 
  include_directories(${PROJECT_NAME} PUBLIC
          ${SUNGEAR_DIR}/Externals

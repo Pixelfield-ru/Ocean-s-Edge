@@ -8,6 +8,7 @@
 #include <vector>
 #include <entt/entity/entity.hpp>
 #include <unordered_set>
+#include <mutex>
 
 #include <unordered_map>
 #include <SGUtils/Math/MathUtils.h>

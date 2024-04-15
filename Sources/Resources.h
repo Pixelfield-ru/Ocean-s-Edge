@@ -16,9 +16,37 @@ namespace OceansEdge
 {
     struct Resources
     {
+        static inline std::vector<std::string> m_bricksBreakBuffersNames = {
+                "bricks_brake",
+                "stone0_brake",
+                "stone1_brake",
+                "stone2_brake",
+                "stone3_brake"
+        };
+
+
+        static inline std::vector<std::string> m_grassWithMudBreakBuffersNames = {
+                "grass_w_mud_brake",
+                "grass_w_mud_brake0",
+                "grass_w_mud_brake1"
+        };
+
+        static inline std::vector<std::string> m_stoneBreakBuffersNames = {
+                "stone0_brake",
+                "stone1_brake",
+                "stone2_brake",
+                "stone3_brake"
+        };
+
+
         SG_NOINLINE static auto getBlocksAtlas() noexcept
         {
             return res_blocksAtlas;
+        }
+
+        SG_NOINLINE static auto& getAudioBuffersMap() noexcept
+        {
+            return m_audioBuffers;
         }
         
         static void init()
@@ -26,6 +54,13 @@ namespace OceansEdge
             res_blocksAtlas = SGCore::AssetManager::loadAsset<SGCore::ITexture2D>(OE_BLOCKS_ATLAS_PATH);
             
             m_audioBuffers["bricks_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/bricks.ogg");
+            m_audioBuffers["grass_w_mud_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/grass_w_mud.ogg");
+            m_audioBuffers["grass_w_mud_brake0"] = createAudioBufferByPath("../OEResources/audio/block_break/grass_w_mud0.ogg");
+            m_audioBuffers["grass_w_mud_brake1"] = createAudioBufferByPath("../OEResources/audio/block_break/grass_w_mud1.ogg");
+            m_audioBuffers["stone0_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone0.ogg");
+            m_audioBuffers["stone1_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone1.ogg");
+            m_audioBuffers["stone2_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone2.ogg");
+            m_audioBuffers["stone3_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/stone3.ogg");
         }
         
     private:

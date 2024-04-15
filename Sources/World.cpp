@@ -18,6 +18,7 @@
 #include <SGCore/Render/DebugDraw.h>
 #include <SGCore/Input/InputManager.h>
 #include <SGUtils/Math/MathPrimitivesUtils.h>
+#include <SGCore/Audio/AudioSource.h>
 
 #include "World.h"
 #include "BlocksTypes.h"
@@ -25,9 +26,12 @@
 #include "BlockData.h"
 #include "OEPhysicalEntity.h"
 #include "Player/LocalPlayer.h"
+#include "Resources.h"
 
 void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noexcept
 {
+    m_audioEntitiesPool = SGCore::EntitiesPool(scene->getECSRegistry());
+
     m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
     m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
     m_chunkTmpYMaximums = flat_array<long, 2>(Settings::s_chunksSize.x, Settings::s_chunksSize.z);
@@ -125,7 +129,9 @@ void OceansEdge::World::buildChunksGrid
     }*/
     
     // std::vector<float> blocksPositions;
-    
+
+    auto t0 = SGCore::now();
+
     for(const auto& p : tmpOccupiedIndices)
     {
         if(!m_lastOccupiedIndices.contains(p) && !m_freeChunksEntities.empty())
@@ -192,7 +198,6 @@ void OceansEdge::World::buildChunksGrid
                             if(findChangedBlock != foundChangedChunkIt->second.end())
                             {
                                 blockType = findChangedBlock->second;
-                                std::cout << "sdfsfdfdfgdf" << std::endl;
                                 continue;
                             }
                         }
@@ -299,6 +304,10 @@ void OceansEdge::World::buildChunksGrid
             m_freeChunksEntities.erase(fIt);
         }
     }
+
+    auto t1 = SGCore::now();
+
+    // std::cout << "time dif0: " << SGCore::timeDiff<double, std::milli>(t0, t1) << std::endl;
     
     // now fill extreme blocks of chunks
     /*for(auto& blocksPair : m_visibleBlocksTypes)
@@ -414,6 +423,35 @@ void OceansEdge::World::buildChunksGrid
         {
             if(lmbPressed)
             {
+                std::vector<std::string>* soundsName = nullptr;
+                std::uint32_t rndNearRange = 0;
+                std::uint32_t rndFarRange = 0;
+
+                if(foundNearestBlockData->m_type == BlocksTypes::OEB_BRICKS)
+                {
+                    soundsName = &Resources::m_bricksBreakBuffersNames;
+                }
+                else if(foundNearestBlockData->m_type == BlocksTypes::OEB_MUD_WITH_GRASS)
+                {
+                    soundsName = &Resources::m_grassWithMudBreakBuffersNames;
+                }
+                else if(foundNearestBlockData->m_type == BlocksTypes::OEB_STONE)
+                {
+                    soundsName = &Resources::m_stoneBreakBuffersNames;
+                }
+
+                if(soundsName)
+                {
+                    rndFarRange = soundsName->size() - 1;
+
+                    std::random_device rndDevice;
+                    std::mt19937 rng(rndDevice());
+                    std::uniform_int_distribution<std::mt19937::result_type> distribution(rndNearRange, rndFarRange);
+
+                    createBlockSound(foundNearestChunkIt->second, *foundNearestBlockData,
+                                     (*soundsName)[distribution(rng)]);
+                }
+
                 m_changedBlocks[foundNearestBlockChunk][foundNearestBlockData->m_indices] = BlocksTypes::OEB_AIR;
                 m_freeChunksEntities.insert(foundNearestChunkIt->second);
                 m_lastOccupiedIndices.erase(foundNearestBlockChunk);
@@ -421,6 +459,37 @@ void OceansEdge::World::buildChunksGrid
             
             if(rmbPressed)
             {
+                // DUMMY !!!!!
+
+                std::vector<std::string>* soundsName = nullptr;
+                std::uint32_t rndNearRange = 0;
+                std::uint32_t rndFarRange = 0;
+
+                if(localPlayer.m_currentSelectedBlockType == BlocksTypes::OEB_BRICKS)
+                {
+                    soundsName = &Resources::m_bricksBreakBuffersNames;
+                }
+                else if(localPlayer.m_currentSelectedBlockType == BlocksTypes::OEB_MUD_WITH_GRASS)
+                {
+                    soundsName = &Resources::m_grassWithMudBreakBuffersNames;
+                }
+                else if(localPlayer.m_currentSelectedBlockType == BlocksTypes::OEB_STONE)
+                {
+                    soundsName = &Resources::m_stoneBreakBuffersNames;
+                }
+
+                if(soundsName)
+                {
+                    rndFarRange = soundsName->size() - 1;
+
+                    std::random_device rndDevice;
+                    std::mt19937 rng(rndDevice());
+                    std::uniform_int_distribution<std::mt19937::result_type> distribution(rndNearRange, rndFarRange);
+
+                    createBlockSound(foundNearestChunkIt->second, *foundNearestBlockData,
+                                     (*soundsName)[distribution(rng)]);
+                }
+
                 glm::vec3 chunkPos = foundNearestChunkIt->second->m_position;
                 
                 ivec3_16 blockToPutIdx = foundNearestBlockData->m_indices;
@@ -561,6 +630,54 @@ void OceansEdge::World::buildChunksGrid
     }
     
     // =============================
+}
+
+void OceansEdge::World::createBlockSound
+(const SGCore::Ref<OceansEdge::Chunk>& chunk, const OceansEdge::BlockData& blockData, const std::string& audioBufferName) noexcept
+{
+    SGCore::AudioSource* audioSource = nullptr;
+
+    bool isCreatedNew;
+    SGCore::entity_t audioEntity = m_audioEntitiesPool.pop(isCreatedNew);
+    auto poolRegistry = m_audioEntitiesPool.getAttachedRegistry();
+    if(isCreatedNew)
+    {
+        if(poolRegistry)
+        {
+            audioSource = &poolRegistry->emplace<SGCore::AudioSource>(audioEntity);
+        }
+    }
+    else
+    {
+        if(poolRegistry)
+        {
+            audioSource = &poolRegistry->get<SGCore::AudioSource>(audioEntity);
+        }
+    }
+
+    if(audioSource && isCreatedNew)
+    {
+        audioSource->create();
+        audioSource->onStateChanged += [this, audioEntity](SGCore::AudioSource& as, SGCore::AudioSourceState lastState,
+                                                           SGCore::AudioSourceState newState)
+        {
+            if(lastState == SGCore::AudioSourceState::SOURCE_PLAYING && newState == SGCore::AudioSourceState::SOURCE_STOPPED)
+            {
+                m_audioEntitiesPool.push(audioEntity);
+            }
+        };
+    }
+
+    if(audioSource)
+    {
+        glm::vec3 audioPos = { chunk->m_position.x + blockData.m_indices.x,
+                               chunk->m_position.y + blockData.m_indices.y,
+                               chunk->m_position.z + blockData.m_indices.z };
+
+        audioSource->setPosition(audioPos);
+        audioSource->attachBuffer(Resources::getAudioBuffersMap()[audioBufferName]);
+        audioSource->setState(SGCore::AudioSourceState::SOURCE_PLAYING);
+    }
 }
 
 void OceansEdge::World::addBlockTopSideVertices(const ivec3_32& blockPos, const SGCore::Ref<Chunk>& chunk, const SGCore::Ref<PhysicalChunk>& physicalChunk, const std::uint16_t& blockType) noexcept

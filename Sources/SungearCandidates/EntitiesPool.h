@@ -2,24 +2,37 @@
 // Created by ilya on 14.04.24.
 //
 
-#ifndef OCEANSEDGE_ENTITIESPOOL_H
-#define OCEANSEDGE_ENTITIESPOOL_H
+#ifndef SUNGEARENGINE_ENTITIESPOOL_H
+#define SUNGEARENGINE_ENTITIESPOOL_H
 
 #include <vector>
 #include <entt/entity/entity.hpp>
 #include <mutex>
+#include <SGUtils/EventListener.h>
+#include <SGUtils/Event.h>
 
 #include "SGCore/Main/CoreGlobals.h"
 
 namespace SGCore
 {
+    struct EntitiesPool;
+
     struct EntitiesPool
     {
+        friend struct PoolEntity;
+
         EntitiesPool() = default;
         explicit EntitiesPool(const Ref<registry_t>& attachedRegistry);
+        ~EntitiesPool();
         
-        entity_t pop() noexcept;
+        entity_t pop(bool& isCreatedNew) noexcept;
         void push(const entity_t& entity) noexcept;
+
+        void clear() noexcept;
+
+        Ref<registry_t> getAttachedRegistry() const noexcept;
+
+        EntitiesPool& operator=(const EntitiesPool& other) noexcept;
     
     private:
         std::mutex m_mutex;
@@ -31,4 +44,4 @@ namespace SGCore
     };
 }
 
-#endif //OCEANSEDGE_ENTITIESPOOL_H
+#endif // SUNGEARENGINE_ENTITIESPOOL_H
