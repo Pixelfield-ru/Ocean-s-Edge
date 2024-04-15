@@ -16,6 +16,12 @@
 #include <SGCore/ImportedScenesArch/MeshDataRenderInfo.h>
 #include <SGCore/Graphics/API/IShader.h>
 #include <SGUtils/EventListener.h>
+#include <SGUtils/Math/AABB.h>
+#include <SGCore/Scene/Scene.h>
+#include <SGCore/Graphics/API/IVertexArray.h>
+#include <SGCore/Graphics/API/IVertexBuffer.h>
+#include <SGCore/Graphics/API/IIndexBuffer.h>
+
 #include "GameGlobals.h"
 #include "BlockData.h"
 

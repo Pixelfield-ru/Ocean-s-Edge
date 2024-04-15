@@ -8,6 +8,8 @@
 #include <vector>
 #include <SGCore/Main/CoreGlobals.h>
 #include <SGCore/Physics/Rigidbody3D.h>
+#include <BulletCollision/CollisionShapes/btTriangleMesh.h>
+
 #include "Chunk.h"
 
 namespace OceansEdge

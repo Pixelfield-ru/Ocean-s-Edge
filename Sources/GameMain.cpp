@@ -52,7 +52,6 @@ extern "C" {
 #include "GameMain.h"
 #include "Skybox/DayNightCycleSystem.h"
 #include "BlocksTypes.h"
-#include "Atlas.h"
 #include "World.h"
 #include "Player/LocalPlayer.h"
 #include "OEPhysicalEntity.h"
@@ -76,11 +75,6 @@ void OceansEdge::GameMain::init()
     geniusJPG->setRawName("GeniusTexture");
     
     geniusJPG->create();
-    
-    // todo:
-    // SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge");
-    
-    Atlas::init();
     
     // CREATING WORLD SCENE --------------------------------------
     

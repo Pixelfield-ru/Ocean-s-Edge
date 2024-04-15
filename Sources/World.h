@@ -13,12 +13,12 @@
 #include <bit>
 #include <stack>
 #include <SGCore/Input/InputListener.h>
+#include <SGCore/Utils/ECS/EntitiesPool.h>
 
 #include "GameGlobals.h"
 #include "Chunk.h"
 #include "SGUtils/Noise/PerlinNoise.hpp"
 #include "PhysicalChunk.h"
-#include "SungearCandidates/EntitiesPool.h"
 
 namespace OceansEdge
 {
