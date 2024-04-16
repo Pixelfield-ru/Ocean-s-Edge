@@ -19,6 +19,7 @@
 #include <SGUtils/Math/MathPrimitivesUtils.h>
 #include <SGCore/Audio/AudioSource.h>
 #include <SGCore/Render/LayeredFrameReceiver.h>
+#include <SGCore/Graphics/API/IFrameBuffer.h>
 
 #include "World.h"
 #include "BlocksTypes.h"
@@ -677,7 +678,7 @@ void OceansEdge::World::createBlockSound
                                chunk->m_position.y + blockData.m_indices.y + 0.5f,
                                chunk->m_position.z + blockData.m_indices.z + 0.5f };
 
-        audioSource->setRolloffFactor(0.5f);
+        audioSource->setRolloffFactor(0.1f);
         audioSource->setPosition(audioPos);
         audioSource->attachBuffer(Resources::getAudioBuffersMap()[audioBufferName]);
         audioSource->setState(SGCore::AudioSourceState::SOURCE_PLAYING);
@@ -1039,11 +1040,32 @@ void OceansEdge::World::addBlockRightSideVertices(const ivec3_32& blockPos, cons
 
 void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
 {
-    for(const auto& chunk : m_chunks)
-    {
-        if(!chunk.second) continue;
-        chunk.second->render(scene);
-    }
+    using namespace SGCore;
+    
+    auto camerasView = scene->getECSRegistry()->view<Ref<Camera3D>, Ref<RenderingBase>, Ref<Transform>>();
+    
+    camerasView.each([&scene, this]
+    (const entity_t& cameraEntity, Ref<Camera3D> camera3D, Ref<RenderingBase> renderingBase, Ref<Transform> transform) {
+        CoreMain::getRenderer()->prepareUniformBuffers(renderingBase, transform);
+        
+        LayeredFrameReceiver* cameraLayeredFrameReceiver = scene->getECSRegistry()->try_get<LayeredFrameReceiver>(cameraEntity);
+        
+        if(cameraLayeredFrameReceiver)
+        {
+            cameraLayeredFrameReceiver->getDefaultPostProcessLayer()->m_frameBuffer->bind();
+        }
+        
+        for(const auto& chunk : m_chunks)
+        {
+            if(!chunk.second) continue;
+            chunk.second->render(scene);
+        }
+        
+        if(cameraLayeredFrameReceiver)
+        {
+            cameraLayeredFrameReceiver->getDefaultPostProcessLayer()->m_frameBuffer->unbind();
+        }
+    });
 }
 
 SGCore::entity_t OceansEdge::World::getPlayerEntity() const noexcept

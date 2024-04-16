@@ -212,7 +212,19 @@ void OceansEdge::GameMain::init()
         
         // chunk0Transform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(ChunksManager::getChunks()[0]);
         m_world->prepareGrid(m_worldScene);
+        
     }
+    
+    auto& cameraLayeredFrameReceiver = m_worldScene->getECSRegistry()->get<SGCore::LayeredFrameReceiver>(m_world->getPlayerEntity());
+    
+    for(const auto& e : cubeEntities)
+    {
+        std::cout << "has mesh: " << (m_worldScene->getECSRegistry()->try_get<SGCore::Mesh>(e) ? "true" : "false") << std::endl;
+    }
+    
+    auto testPPLayer = cameraLayeredFrameReceiver.addPostProcessLayer("test_pp_layer");
+    m_worldScene->getECSRegistry()->get<SGCore::EntityBaseInfo>(cubeEntities[2]).m_postProcessLayers[&cameraLayeredFrameReceiver] = testPPLayer;
+    m_worldScene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(cubeEntities[0])->m_ownTransform.m_scale = { 3.0, 3.0, 3.0 };
     
     // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
     std::cout <<

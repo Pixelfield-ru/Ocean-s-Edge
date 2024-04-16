@@ -8,6 +8,7 @@
 #include <SGCore/Graphics/API/IVertexBuffer.h>
 #include <SGCore/Graphics/API/IIndexBuffer.h>
 #include <SGCore/Graphics/API/IRenderer.h>
+#include <SGCore/Graphics/API/IFrameBuffer.h>
 #include <SGCore/Graphics/API/IVertexBufferLayout.h>
 #include <SGCore/Main/CoreMain.h>
 #include <SGCore/Render/RenderPipelinesManager.h>
@@ -84,35 +85,27 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     // m_vertexArray->bind();
     
+    subPassShader->useUniformBuffer(CoreMain::getRenderer()->m_viewMatricesBuffer);
+    
     auto atmosphereUpdater = scene->getSystem<AtmosphereUpdater>();
     
-    auto camerasView = registry->view<Ref<Camera3D>, Ref<RenderingBase>, Ref<Transform>>();
+    if(atmosphereUpdater)
+    {
+        subPassShader->useUniformBuffer(atmosphereUpdater->m_uniformBuffer);
+    }
     
-    camerasView.each([&verticesCount, &indicesCount, &subPassShader, &atmosphereUpdater, this](Ref<Camera3D> camera3D,
-            Ref<RenderingBase> renderingBase, Ref<Transform> transform) {
-        CoreMain::getRenderer()->prepareUniformBuffers(renderingBase, transform);
-        
-        subPassShader->useUniformBuffer(CoreMain::getRenderer()->m_viewMatricesBuffer);
-        if(atmosphereUpdater)
-        {
-            subPassShader->useUniformBuffer(atmosphereUpdater->m_uniformBuffer);
-        }
-        
-        glm::vec3 chunkPos;
-        chunkPos.x = m_position.x;
-        chunkPos.y = m_position.y;
-        chunkPos.z = m_position.z;
-        
-        subPassShader->useVectorf("u_chunkPosition", chunkPos);
-        Resources::getBlocksAtlas()->bind(0);
-        subPassShader->useTextureBlock("u_blocksAtlas", 0);
-        
-        // std::cout << "verticesCount : " << verticesCount << ", indicesCount : " << indicesCount << std::endl;
-        
-        CoreMain::getRenderer()->renderArray(m_vertexArray, m_renderInfo,
-                                             verticesCount,
-                                             indicesCount);
-    });
+    glm::vec3 chunkPos;
+    chunkPos.x = m_position.x;
+    chunkPos.y = m_position.y;
+    chunkPos.z = m_position.z;
+    
+    subPassShader->useVectorf("u_chunkPosition", chunkPos);
+    Resources::getBlocksAtlas()->bind(0);
+    subPassShader->useTextureBlock("u_blocksAtlas", 0);
+    
+    CoreMain::getRenderer()->renderArray(m_vertexArray, m_renderInfo,
+                                         verticesCount,
+                                         indicesCount);
     
     if(m_needsSubData)
     {
