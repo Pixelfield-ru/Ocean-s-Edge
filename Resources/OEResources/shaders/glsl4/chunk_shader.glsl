@@ -59,7 +59,7 @@ SGSubPass(ChunksPass)
 
     SGSubShader(Fragment)
     {
-        layout(location = 0) out vec4 fragColor;
+        layout(location = 1) out vec4 fragColor;
 
         in VS_OUT vsOut;
 

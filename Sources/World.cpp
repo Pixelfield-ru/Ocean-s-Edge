@@ -1052,7 +1052,8 @@ void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
         
         if(cameraLayeredFrameReceiver)
         {
-            cameraLayeredFrameReceiver->getDefaultPostProcessLayer()->m_frameBuffer->bind();
+            cameraLayeredFrameReceiver->getDefaultLayer()->m_frameBuffer->bind();
+            cameraLayeredFrameReceiver->getDefaultLayer()->m_frameBuffer->bindAttachmentsToDrawIn(cameraLayeredFrameReceiver->getDefaultLayer()->m_attachmentsToRenderIn);
         }
         
         for(const auto& chunk : m_chunks)
@@ -1063,7 +1064,7 @@ void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
         
         if(cameraLayeredFrameReceiver)
         {
-            cameraLayeredFrameReceiver->getDefaultPostProcessLayer()->m_frameBuffer->unbind();
+            cameraLayeredFrameReceiver->getDefaultLayer()->m_frameBuffer->unbind();
         }
     });
 }

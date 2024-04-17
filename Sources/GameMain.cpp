@@ -222,7 +222,12 @@ void OceansEdge::GameMain::init()
         std::cout << "has mesh: " << (m_worldScene->getECSRegistry()->try_get<SGCore::Mesh>(e) ? "true" : "false") << std::endl;
     }
     
-    auto testPPLayer = cameraLayeredFrameReceiver.addPostProcessLayer("test_pp_layer");
+    auto testPPLayer = cameraLayeredFrameReceiver.addLayer("test_pp_layer");
+    SGCore::PostProcessFXSubPass subPass;
+    subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT0;
+    testPPLayer->m_subPasses.push_back(subPass);
+    subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT1;
+    testPPLayer->m_subPasses.push_back(subPass);
     m_worldScene->getECSRegistry()->get<SGCore::EntityBaseInfo>(cubeEntities[2]).m_postProcessLayers[&cameraLayeredFrameReceiver] = testPPLayer;
     m_worldScene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(cubeEntities[0])->m_ownTransform.m_scale = { 3.0, 3.0, 3.0 };
     
