@@ -222,12 +222,50 @@ void OceansEdge::GameMain::init()
         std::cout << "has mesh: " << (m_worldScene->getECSRegistry()->try_get<SGCore::Mesh>(e) ? "true" : "false") << std::endl;
     }
     
+    m_worldScene->getECSRegistry()->get<SGCore::Mesh>(cubeEntities[2]).m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_DIFFUSE, Resources::getBlocksAtlas());
+    
+    // ==============================================================================================================
+    // создаём новый слой постпроцесса
     auto testPPLayer = cameraLayeredFrameReceiver.addLayer("test_pp_layer");
+    
     SGCore::PostProcessFXSubPass subPass;
-    subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT0;
+    
+    testPPLayer->m_frameBuffer->bind();
+    // добавляем color2 аттачмент для фреймбуфера слоя.
+    // он будет использоваться для применения эффекта, на основе данных из аттачмента color1
+    testPPLayer->m_frameBuffer->addAttachment(
+            SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2,
+            SGGColorFormat::SGG_RGB,
+            SGGColorInternalFormat::SGG_RGB8,
+            0,
+            0
+    );
+    testPPLayer->m_frameBuffer->unbind();
+    
+    // добавляем сабпасс, который будет рендериться во второй аттачмент
+    subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2;
     testPPLayer->m_subPasses.push_back(subPass);
-    subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT1;
-    testPPLayer->m_subPasses.push_back(subPass);
+    
+    // указываем, что в аттачмент color0 комбинированного фреймбуфера LayeredFrameReceiver пойдёт аттачмент color2
+    testPPLayer->m_attachmentsForCombining[SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT0] = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2;
+    
+    // загружаем шейдер с блумом
+    SGCore::Ref<SGCore::IShader> bloomShader = SGCore::MakeRef<SGCore::IShader>();
+    bloomShader->addSubPassShadersAndCompile(SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>("../OEResources/shaders/glsl4/bloom_layer.glsl"));
+    testPPLayer->m_FXSubPassShader = bloomShader->getSubPassShader("SGLPPLayerFXPass");
+    
+    // добавляем текстурный биндинг, а именно аттачмент color1
+    testPPLayer->m_FXSubPassShader->addTextureBinding("test_pp_layer_ColorAttachments[0]",
+                                                      testPPLayer->m_frameBuffer->getAttachment(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT1));
+    
+    // аттачмент color0 - по дефолту - сырой аттачмент, не прошедший проверку на глубину (содержащий данные других слоёв)
+    // аттачмент color1 - аттачмент color0, но прошедший проверку на глубину
+    // аттачмент color2 - аттачмент с эффектом блума, основанного на данных из color1
+    
+    // нельзя устанавливать subPass.m_attachmentRenderTo в color1,
+    // т.к. мы уже используем color1 как данные для эффекта. будет конфликт
+    // ==============================================================================================================
+    
     m_worldScene->getECSRegistry()->get<SGCore::EntityBaseInfo>(cubeEntities[2]).m_postProcessLayers[&cameraLayeredFrameReceiver] = testPPLayer;
     m_worldScene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(cubeEntities[0])->m_ownTransform.m_scale = { 3.0, 3.0, 3.0 };
     

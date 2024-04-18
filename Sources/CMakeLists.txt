@@ -81,7 +81,6 @@
  set(SG_RESOURCES_COPY_FONTS ON)
  set(SG_RESOURCES_COPY_AUDIO ON)
 
- add_subdirectory(${SUNGEAR_DIR}/Externals Externals)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGConsole Sources/SGConsole)
  add_subdirectory(${SUNGEAR_DIR}/Sources/SGCore Sources/SGCore)
