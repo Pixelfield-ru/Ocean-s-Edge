@@ -5,6 +5,8 @@
 #ifndef OCEANSEDGE_GAMEGLOBALS_H
 #define OCEANSEDGE_GAMEGLOBALS_H
 
+#include <glaze/glaze.hpp>
+
 #include <cstddef>
 #include <glm/vec3.hpp>
 #include <SGCore/Utils/ShadersPaths.h>
@@ -48,9 +50,44 @@ namespace OceansEdge
             return m_shadersPaths;
         }
         
+        static inline bool m_enableSSAO = true;
+        static inline std::string m_worldSavePath = "world.json";
+        
     private:
         static inline SGCore::ShadersPaths m_shadersPaths;
     };
 }
+
+template <>
+struct glz::meta<OceansEdge::ivec2_64>
+{
+    using T = OceansEdge::ivec2_64;
+    static constexpr auto value = object(
+            &T::x,
+            &T::y
+    );
+};
+
+template <>
+struct glz::meta<OceansEdge::ivec3_16>
+{
+    using T = OceansEdge::ivec3_16;
+    static constexpr auto value = object(
+            &T::x,
+            &T::y,
+            &T::z
+    );
+};
+
+template <>
+struct glz::meta<glm::vec3>
+{
+    using T = glm::vec3;
+    static constexpr auto value = object(
+            &T::x,
+            &T::y,
+            &T::z
+    );
+};
 
 #endif //OCEANSEDGE_GAMEGLOBALS_H

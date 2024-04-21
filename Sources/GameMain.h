@@ -23,6 +23,7 @@ namespace OceansEdge
         static void update(const double& dt, const double& fixedDt);
 
         static SGCore::Ref<World> getCurrentWorld() noexcept;
+        static SGCore::Ref<SGCore::Scene> getCurrentWorldScene() noexcept;
         
     private:
         static inline SGCore::Ref<SGCore::Scene> m_worldScene;

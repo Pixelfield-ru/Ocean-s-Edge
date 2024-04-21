@@ -3,6 +3,7 @@
 //
 #include "Chunk.h"
 #include "Resources.h"
+#include "GameMain.h"
 
 #include <SGCore/Graphics/API/IVertexArray.h>
 #include <SGCore/Graphics/API/IVertexBuffer.h>
@@ -83,6 +84,12 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     
     subPassShader->bind();
     
+    LayeredFrameReceiver& playerCameraReceiver = GameMain::getCurrentWorldScene()->getECSRegistry()->get<LayeredFrameReceiver>(
+            GameMain::getCurrentWorld()->getPlayerEntity());
+    playerCameraReceiver.getLayer(
+            "chunks_layer")->m_frameBuffer->getAttachment(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT5)->bind(0);
+    subPassShader->useTextureBlock("SSAOLayerColor", 0);
+    
     // m_vertexArray->bind();
     
     subPassShader->useUniformBuffer(CoreMain::getRenderer()->m_viewMatricesBuffer);
@@ -100,8 +107,8 @@ void OceansEdge::Chunk::render(const SGCore::Ref<SGCore::Scene>& scene)
     chunkPos.z = m_position.z;
     
     subPassShader->useVectorf("u_chunkPosition", chunkPos);
-    Resources::getBlocksAtlas()->bind(0);
-    subPassShader->useTextureBlock("u_blocksAtlas", 0);
+    Resources::getBlocksAtlas()->bind(1);
+    subPassShader->useTextureBlock("u_blocksAtlas", 1);
     
     CoreMain::getRenderer()->renderArray(m_vertexArray, m_renderInfo,
                                          verticesCount,

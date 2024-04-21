@@ -47,6 +47,9 @@ extern "C" {
 #include <SGCore/Render/SpacePartitioning/OctreeCullable.h>
 #include <SGCore/Render/SpacePartitioning/IgnoreOctrees.h>
 #include <SGCore/Threading/ThreadsManager.h>
+#include <SGCore/Render/PostProcess/StandardFX/SSAO.h>
+#include <SGCore/Render/Atmosphere/AtmosphereUpdater.h>
+#include <SGCore/Input/InputManager.h>
 
 #include "GameMain.h"
 #include "Skybox/DayNightCycleSystem.h"
@@ -212,6 +215,7 @@ void OceansEdge::GameMain::init()
         
         // chunk0Transform = m_worldScene->getECSRegistry().get<SGCore::Ref<SGCore::Transform>>(ChunksManager::getChunks()[0]);
         m_world->prepareGrid(m_worldScene);
+        m_world->load();
         
     }
     
@@ -225,38 +229,117 @@ void OceansEdge::GameMain::init()
     m_worldScene->getECSRegistry()->get<SGCore::Mesh>(cubeEntities[2]).m_base.m_meshData->m_material->addTexture2D(SGTextureType::SGTT_DIFFUSE, Resources::getBlocksAtlas());
     
     // ==============================================================================================================
-    // создаём новый слой постпроцесса
-    auto testPPLayer = cameraLayeredFrameReceiver.addLayer("test_pp_layer");
     
-    SGCore::PostProcessFXSubPass subPass;
-    
-    testPPLayer->m_frameBuffer->bind();
-    // добавляем color2 аттачмент для фреймбуфера слоя.
-    // он будет использоваться для применения эффекта, на основе данных из аттачмента color1
-    testPPLayer->m_frameBuffer->addAttachment(
-            SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2,
-            SGGColorFormat::SGG_RGB,
-            SGGColorInternalFormat::SGG_RGB8,
-            0,
-            0
-    );
-    testPPLayer->m_frameBuffer->unbind();
-    
-    // добавляем сабпасс, который будет рендериться во второй аттачмент
-    subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2;
-    testPPLayer->m_subPasses.push_back(subPass);
-    
-    // указываем, что в аттачмент color0 комбинированного фреймбуфера LayeredFrameReceiver пойдёт аттачмент color2
-    testPPLayer->m_attachmentsForCombining[SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT0] = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2;
-    
-    // загружаем шейдер с блумом
-    SGCore::Ref<SGCore::IShader> bloomShader = SGCore::MakeRef<SGCore::IShader>();
-    bloomShader->addSubPassShadersAndCompile(SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>("../OEResources/shaders/glsl4/bloom_layer.glsl"));
-    testPPLayer->m_FXSubPassShader = bloomShader->getSubPassShader("SGLPPLayerFXPass");
-    
-    // добавляем текстурный биндинг, а именно аттачмент color1
-    testPPLayer->m_FXSubPassShader->addTextureBinding("test_pp_layer_ColorAttachments[0]",
-                                                      testPPLayer->m_frameBuffer->getAttachment(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT1));
+    {
+        auto chunksPPLayer = cameraLayeredFrameReceiver.addLayer("chunks_layer");
+        
+        chunksPPLayer->m_frameBuffer->bind();
+        chunksPPLayer->m_frameBuffer->addAttachment(
+                SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2, // GBUFFER VERTICES POSITIONS ATTACHMENT
+                SGGColorFormat::SGG_RGB,
+                SGGColorInternalFormat::SGG_RGB32_FLOAT,
+                0,
+                0
+        );
+        chunksPPLayer->m_frameBuffer->addAttachment(
+                SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT3, // GBUFFER VERTICES VIEW MODEL NORMALS ATTACHMENT
+                SGGColorFormat::SGG_RGB,
+                SGGColorInternalFormat::SGG_RGB16_FLOAT,
+                0,
+                0
+        );
+        chunksPPLayer->m_frameBuffer->addAttachment(
+                SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT4, // SSAO ATTACHMENT
+                SGGColorFormat::SGG_RGB,
+                SGGColorInternalFormat::SGG_RGB8,
+                0,
+                0
+        );
+        chunksPPLayer->m_frameBuffer->addAttachment(
+                SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT5, // SSAO BLUR
+                SGGColorFormat::SGG_RGB,
+                SGGColorInternalFormat::SGG_RGB8,
+                0,
+                0
+        );
+        chunksPPLayer->m_frameBuffer->unbind();
+        
+        SGCore::PostProcessFXSubPass subPass;
+        subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT4;
+        chunksPPLayer->m_subPasses.push_back(subPass);
+        
+        subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT5;
+        subPass.m_enablePostFXDepthPass = true;
+        chunksPPLayer->m_subPasses.push_back(subPass);
+        
+        SGCore::Ref<SGCore::SSAO> chunksSSAO = SGCore::MakeRef<SGCore::SSAO>();
+        chunksPPLayer->addEffect<SGCore::SSAO>(chunksSSAO);
+        
+        chunksPPLayer->m_attachmentsToRenderIn.push_back(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2);
+        chunksPPLayer->m_attachmentsToRenderIn.push_back(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT3);
+        chunksPPLayer->m_attachmentsToDepthTest.push_back(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2);
+        chunksPPLayer->m_attachmentsToDepthTest.push_back(SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT3);
+        
+        chunksPPLayer->m_attachmentsForCombining[SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT0] = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT5;
+        
+        SGCore::Ref<SGCore::IShader> ssaoShader = SGCore::MakeRef<SGCore::IShader>();
+        ssaoShader->addSubPassShadersAndCompile(SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>(
+                "../OEResources/shaders/glsl4/ssao_layer.glsl"));
+        chunksPPLayer->setFXSubPassShader(ssaoShader->getSubPassShader("SGLPPLayerFXPass"));
+        chunksPPLayer->getFXSubPassShader()->addTextureBinding("chunksGBuf_VerticesPositions",
+                                                               chunksPPLayer->m_frameBuffer->getAttachment(
+                                                                       SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2));
+        chunksPPLayer->getFXSubPassShader()->addTextureBinding("chunksGBuf_ViewModelNormals",
+                                                               chunksPPLayer->m_frameBuffer->getAttachment(
+                                                                       SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT3));
+        chunksPPLayer->getFXSubPassShader()->addTextureBinding("SG_SSAO_occlusionFormedTexture",
+                                                               chunksPPLayer->m_frameBuffer->getAttachment(
+                                                                       SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT4));
+        chunksPPLayer->getFXSubPassShader()->addTextureBinding("chunksGBuf_Albedo",
+                                                               chunksPPLayer->m_frameBuffer->getAttachment(
+                                                                       SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT1));
+    }
+    // ==============================================================================================================
+    // ==============================================================================================================
+    {
+        // создаём новый слой постпроцесса
+        auto testPPLayer = cameraLayeredFrameReceiver.addLayer("test_pp_layer");
+        
+        SGCore::PostProcessFXSubPass subPass;
+        
+        testPPLayer->m_frameBuffer->bind();
+        // добавляем color2 аттачмент для фреймбуфера слоя.
+        // он будет использоваться для применения эффекта, на основе данных из аттачмента color1
+        testPPLayer->m_frameBuffer->addAttachment(
+                SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2,
+                SGGColorFormat::SGG_RGB,
+                SGGColorInternalFormat::SGG_RGB8,
+                0,
+                0
+        );
+        testPPLayer->m_frameBuffer->unbind();
+        
+        // добавляем сабпасс, который будет рендериться во второй аттачмент
+        subPass.m_attachmentRenderTo = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2;
+        testPPLayer->m_subPasses.push_back(subPass);
+        
+        // указываем, что в аттачмент color0 комбинированного фреймбуфера LayeredFrameReceiver пойдёт аттачмент color2
+        testPPLayer->m_attachmentsForCombining[SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT0] = SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT2;
+        
+        // загружаем шейдер с блумом
+        SGCore::Ref<SGCore::IShader> bloomShader = SGCore::MakeRef<SGCore::IShader>();
+        bloomShader->addSubPassShadersAndCompile(SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>(
+                "../OEResources/shaders/glsl4/bloom_layer.glsl"));
+        testPPLayer->setFXSubPassShader(bloomShader->getSubPassShader("SGLPPLayerFXPass"));
+        
+        // добавляем текстурный биндинг, а именно аттачмент color1
+        testPPLayer->getFXSubPassShader()->addTextureBinding("test_pp_layer_ColorAttachments[0]",
+                                                          testPPLayer->m_frameBuffer->getAttachment(
+                                                                  SGFrameBufferAttachmentType::SGG_COLOR_ATTACHMENT1));
+        
+        // добавляем меш кубика в новый слой
+        m_worldScene->getECSRegistry()->get<SGCore::EntityBaseInfo>(cubeEntities[2]).m_postProcessLayers[&cameraLayeredFrameReceiver] = testPPLayer;
+    }
     
     // аттачмент color0 - по дефолту - сырой аттачмент, не прошедший проверку на глубину (содержащий данные других слоёв)
     // аттачмент color1 - аттачмент color0, но прошедший проверку на глубину
@@ -266,7 +349,6 @@ void OceansEdge::GameMain::init()
     // т.к. мы уже используем color1 как данные для эффекта. будет конфликт
     // ==============================================================================================================
     
-    m_worldScene->getECSRegistry()->get<SGCore::EntityBaseInfo>(cubeEntities[2]).m_postProcessLayers[&cameraLayeredFrameReceiver] = testPPLayer;
     m_worldScene->getECSRegistry()->get<SGCore::Ref<SGCore::Transform>>(cubeEntities[0])->m_ownTransform.m_scale = { 3.0, 3.0, 3.0 };
     
     // 0.94 килобайта для Transform + EntityBaseInfo + Mesh
@@ -296,75 +378,30 @@ void OceansEdge::GameMain::fixedUpdate(const double& dt, const double& fixedDt)
 
 void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 {
-    // std::cout << playerTransform->m_ownTransform.m_position.x << std::endl;
-    
     SGCore::CoreMain::getWindow().setTitle("Ocean`s Edge. FPS: " + std::to_string(SGCore::CoreMain::getFPS()));
-    
-    // SGCore::ImGuiWrap::ImGuiLayer::beginFrame();
-    
-    /*ImGui::Begin("ECS Systems Stats");
-    {
-        if(ImGui::BeginTable("SystemsStats", 5))
-        {
-            // ImGui::Columns(5, "Columns", true);
-            
-            ImGui::TableNextColumn();
-            ImGui::Text("System");
-            ImGui::TableNextColumn();
-            ImGui::Text("update");
-            ImGui::TableNextColumn();
-            ImGui::Text("fixedUpdate");
-            ImGui::TableNextColumn();
-            ImGui::Text("parallelUpdate");
-            ImGui::TableNextColumn();
-            ImGui::Text("Thread ID");
-            
-            for(const auto& system : SGCore::Scene::getCurrentScene()->getAllSystems())
-            {
-                ImGui::TableNextColumn();
-                std::string systemName = std::string(typeid(*(system)).name());
-                ImGui::Text(systemName.c_str());
-                
-                ImGui::TableNextColumn();
-                
-                ImGui::Text((std::to_string(system->m_executionTimes["update"]) + " ms").c_str());
-                
-                ImGui::TableNextColumn();
-                
-                ImGui::Text((std::to_string(system->m_executionTimes["fixedUpdate"]) + " ms").c_str());
-                
-                ImGui::TableNextColumn();
-                
-                ImGui::Text((std::to_string(system->m_executionTimes["parallelUpdate"]) + " ms").c_str());
-                
-                ImGui::TableNextColumn();
-                
-                ImGui::Text(std::to_string(system->getThreadID()).c_str());
-                
-                //SGCore::Ref<SGCore::IP
-            }
-            
-            ImGui::EndTable();
-        }
-        
-        double t0 = SGCore::Scene::getCurrentScene()->getUpdateFunctionExecutionTime();
-        double t1 = SGCore::Scene::getCurrentScene()->getFixedUpdateFunctionExecutionTime();
-        double t2 = SGCore::RenderPipelinesManager::getCurrentRenderPipeline()->getRenderPassesExecutionTime();
-        double t3 = SGCore::CoreMain::getWindow().getSwapBuffersExecutionTime();
-        
-        ImGui::Text("Scene update execution: %f", t0);
-        ImGui::Text("Scene fixed update execution: %f", t1);
-        ImGui::Text("Scene total execution: %f", t0 + t1);
-        ImGui::Text("Render pipeline execution: %f", t2);
-        ImGui::Text("Swap buffers execution: %f", t3);
-        ImGui::Text("Render total execution: %f", t2 + t3);
-        ImGui::Text("Total frame time: %f", t0 + t1 + t2 + t3);
-    }
-    ImGui::End();*/
 
     SGCore::Scene::getCurrentScene()->update(dt, fixedDt);
 
     m_world->render(m_worldScene);
+    
+    SGCore::LayeredFrameReceiver& playerCameraReceiver = m_worldScene->getECSRegistry()->get<SGCore::LayeredFrameReceiver>(m_world->getPlayerEntity());
+    auto chunksPPLayer = playerCameraReceiver.getLayer("chunks_layer");
+    chunksPPLayer->getFXSubPassShader()->bind();
+    
+    chunksPPLayer->getFXSubPassShader()->useInteger("SG_SSAO_ENABLED", Settings::m_enableSSAO);
+    
+    if(SGCore::InputManager::getMainInputListener()->keyboardKeyReleased(SGCore::KeyboardKey::KEY_P))
+    {
+        Settings::m_enableSSAO = !Settings::m_enableSSAO;
+    }
+    
+    if(SGCore::InputManager::getMainInputListener()->keyboardKeyDown(SGCore::KeyboardKey::KEY_LEFT_ALT) &&
+       SGCore::InputManager::getMainInputListener()->keyboardKeyReleased(SGCore::KeyboardKey::KEY_Z))
+    {
+        std::lock_guard worldSaveLock(m_world->m_saveWorldMutex);
+        
+        m_world->save();
+    }
 
     // SGCore::ImGuiWrap::ImGuiLayer::endFrame();
 }
@@ -372,6 +409,11 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
 SGCore::Ref<OceansEdge::World> OceansEdge::GameMain::getCurrentWorld() noexcept
 {
     return m_world;
+}
+
+SGCore::Ref<SGCore::Scene> OceansEdge::GameMain::getCurrentWorldScene() noexcept
+{
+    return m_worldScene;
 }
 
 int main()

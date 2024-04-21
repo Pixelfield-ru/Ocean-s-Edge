@@ -59,14 +59,25 @@ SGSubPass(ChunksPass)
 
     SGSubShader(Fragment)
     {
-        layout(location = 1) out vec4 fragColor;
+        layout(location = 1) out vec4 GBufferFragAlbedo;
+        // OUTPUT COLOR SHOULD ALWAYS BE vec4. BUT ATTACHMENT IN LAYER FRAMEBUFFER CAN BE vec3
+        layout(location = 2) out vec4 GBufferFragPosition;
+        layout(location = 3) out vec4 GBufferFragViewModelNormal;
 
         in VS_OUT vsOut;
 
         uniform sampler2D u_blocksAtlas;
+        uniform sampler2D SSAOLayerColor;
 
         void main()
         {
+            mat4 model;
+            model[0][0] = 1.0;
+            model[1][1] = 1.0;
+            model[2][2] = 1.0;
+            model[3][3] = 1.0;
+            model[3] = vec4(vsOut.vertexPosition, 1.0);
+
             vec3 lightDir = normalize(atmosphere.sunPosition);
             float diff = max(dot(vsOut.normal, lightDir), 0.0);
             vec3 diffuse = diff * atmosphere.sunColor;
@@ -75,9 +86,13 @@ SGSubPass(ChunksPass)
 
             vec4 atlasCol = texture(u_blocksAtlas, vsOut.uv);
 
-            fragColor = vec4(atlasCol.rgb * diffuseCol, 1.0);
-            // fragColor = vec4(vsOut.uv, 0.0, 1.0);
-            // fragColor = vec4(diffuseCol, 1.0);
+            mat3 normalMatrix = transpose(inverse(mat3(camera.viewMatrix * model)));
+
+            GBufferFragPosition = camera.viewMatrix * vec4(vsOut.vertexPosition, 1.0);
+            GBufferFragViewModelNormal = vec4(normalize(vec3(normalMatrix * vsOut.normal)), 1.0);
+
+            // GBufferFragAlbedo = vec4(atlasCol.rgb, 1.0);
+            GBufferFragAlbedo = vec4(atlasCol.rgb * diffuseCol, 1.0);
         }
     }
 }

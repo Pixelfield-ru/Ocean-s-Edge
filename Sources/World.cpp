@@ -34,8 +34,6 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
     m_audioEntitiesPool = SGCore::EntitiesPool(scene->getECSRegistry());
 
     m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
-    m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
-    m_chunkTmpYMaximums = flat_array<long, 2>(Settings::s_chunksSize.x, Settings::s_chunksSize.z);
     
     auto& registry = scene->getECSRegistry();
     
@@ -87,6 +85,7 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
 void OceansEdge::World::buildChunksGrid
 (const SGCore::Ref<SGCore::Scene>& scene, const glm::vec3& playerPosition, const size_t& seed)
 {
+    std::lock_guard worldSaveLock(m_saveWorldMutex);
     
     ivec2_64 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x)), std::floor(playerPosition.z / (Settings::s_chunksSize.z)) };
     
@@ -1050,10 +1049,14 @@ void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
         
         LayeredFrameReceiver* cameraLayeredFrameReceiver = scene->getECSRegistry()->try_get<LayeredFrameReceiver>(cameraEntity);
         
+        Ref<PostProcessLayer> chunksPPLayer;
+        
         if(cameraLayeredFrameReceiver)
         {
-            cameraLayeredFrameReceiver->getDefaultLayer()->m_frameBuffer->bind();
-            cameraLayeredFrameReceiver->getDefaultLayer()->m_frameBuffer->bindAttachmentsToDrawIn(cameraLayeredFrameReceiver->getDefaultLayer()->m_attachmentsToRenderIn);
+            chunksPPLayer = cameraLayeredFrameReceiver->getLayer("chunks_layer");
+            
+            chunksPPLayer->m_frameBuffer->bind();
+            chunksPPLayer->m_frameBuffer->bindAttachmentsToDrawIn(chunksPPLayer->m_attachmentsToRenderIn);
         }
         
         for(const auto& chunk : m_chunks)
@@ -1064,12 +1067,33 @@ void OceansEdge::World::render(const SGCore::Ref<SGCore::Scene>& scene) noexcept
         
         if(cameraLayeredFrameReceiver)
         {
-            cameraLayeredFrameReceiver->getDefaultLayer()->m_frameBuffer->unbind();
+            chunksPPLayer->m_frameBuffer->unbind();
         }
     });
+}
+
+void OceansEdge::World::save() noexcept
+{
+    std::string buf = glz::write<glz::opts { .prettify = true }>(this);
+    
+    SGUtils::FileUtils::writeToFile(Settings::m_worldSavePath, buf, false, true);
+    
+    std::cout << "world saved" << std::endl;
 }
 
 SGCore::entity_t OceansEdge::World::getPlayerEntity() const noexcept
 {
     return m_playerEntity;
+}
+
+void OceansEdge::World::load() noexcept
+{
+    if(std::filesystem::exists(Settings::m_worldSavePath))
+    {
+        std::string json = SGUtils::FileUtils::readFile(Settings::m_worldSavePath);
+        
+        glz::read_json(*this, json);
+        
+        std::cout << "world loaded" << std::endl;
+    }
 }

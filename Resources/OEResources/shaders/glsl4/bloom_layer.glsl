@@ -38,16 +38,15 @@ SGSubPass(SGLPPLayerFXPass)
 
             for(int i = 0; i < samplesCount; ++i)
             {
-                col += texture(test_pp_layer_ColorAttachments[0], saturate(finalUV + rotate(poissonDisk[i], rotTrig) / 75.0));
+                vec2 rotUv = saturate(finalUV + rotate(poissonDisk[i], rotTrig) / 75.0);
+
+                col += texture(test_pp_layer_ColorAttachments[0], rotUv);
             }
 
             col /= 4;
 
-            if(SGLPP_CurrentSubPassIndex == 0)
-            {
-                gl_FragColor = col;
-                // gl_FragColor = texture(test_pp_layer_ColorAttachments[0], vec2(finalUV.x + currentTime, finalUV.y));
-            }
+            gl_FragColor = col;
+            // gl_FragColor = texture(test_pp_layer_ColorAttachments[0], vec2(finalUV.x + currentTime, finalUV.y));
         }
     }
 }
