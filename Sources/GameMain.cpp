@@ -388,7 +388,7 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
     auto chunksPPLayer = playerCameraReceiver.getLayer("chunks_layer");
     chunksPPLayer->getFXSubPassShader()->bind();
     
-    chunksPPLayer->getFXSubPassShader()->useInteger("SG_SSAO_ENABLED", Settings::m_enableSSAO);
+    chunksPPLayer->getEffect<SGCore::SSAO>()->setEnabled(Settings::m_enableSSAO);
     
     if(SGCore::InputManager::getMainInputListener()->keyboardKeyReleased(SGCore::KeyboardKey::KEY_P))
     {
