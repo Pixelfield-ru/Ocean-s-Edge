@@ -61,7 +61,7 @@ namespace OceansEdge
         
         static void init()
         {
-            res_blocksAtlas = SGCore::AssetManager::loadAsset<SGCore::ITexture2D>(OE_BLOCKS_ATLAS_PATH);
+            res_blocksAtlas = SGCore::AssetManager::getInstance()->loadAsset<SGCore::ITexture2D>(OE_BLOCKS_ATLAS_PATH);
             
             m_audioBuffers["bricks_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/bricks.ogg");
             m_audioBuffers["grass_w_mud_brake"] = createAudioBufferByPath("../OEResources/audio/block_break/grass_w_mud.ogg");
@@ -85,7 +85,7 @@ namespace OceansEdge
         static SGCore::Ref<SGCore::AudioBuffer> createAudioBufferByPath(const std::string& path) noexcept
         {
             SGCore::Ref<SGCore::AudioTrackAsset> audio =
-                    SGCore::AssetManager::loadAsset<SGCore::AudioTrackAsset>(path);
+                    SGCore::AssetManager::getInstance()->loadAsset<SGCore::AudioTrackAsset>(path);
             SGCore::Ref<SGCore::AudioBuffer> audioBuf =
                     SGCore::MakeRef<SGCore::AudioBuffer>();
             audioBuf->create();

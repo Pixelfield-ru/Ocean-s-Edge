@@ -142,7 +142,7 @@ void OceansEdge::Chunk::onRenderPipelineSet() noexcept
     
     // std::cout << Settings::getShadersPaths()["ChunkShader"].m_GLSL4RealizationPath << std::endl;
     
-    m_shader->addSubPassShadersAndCompile(SGCore::AssetManager::loadAsset<SGCore::TextFileAsset>(
+    m_shader->addSubPassShadersAndCompile(SGCore::AssetManager::getInstance()->loadAsset<SGCore::TextFileAsset>(
             Settings::getShadersPaths()["ChunkShader"].getCurrentRealization()));
 }
 

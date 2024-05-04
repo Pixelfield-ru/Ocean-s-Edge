@@ -53,25 +53,21 @@
 
  file(GLOB_RECURSE OCEANS_EDGE_SOURCES ../Sources/*.cpp ../Sources/*.h)
 
- set(SUNGEAR_DIR /home/ilya/pixelfield/SungearEngine)
- #set(SUNGEAR_DIR "D:/Pixelfield/NativeSungearEngine/NativeSungearEngine")
- #set(SUNGEAR_DIR "F:/Pixelfield/SungearEngine/SungearEngine")
-
  include_directories(${PROJECT_NAME} PUBLIC
-         ${SUNGEAR_DIR}/Externals
-         ${SUNGEAR_DIR}/Externals/GLM
-         ${SUNGEAR_DIR}/Externals/entt/src
-         ${SUNGEAR_DIR}/Externals/imgui
-         ${SUNGEAR_DIR}/Externals/Assimp/include
-         ${SUNGEAR_DIR}/Externals/OpenGL/include
-         ${SUNGEAR_DIR}/Externals/GLFW/include
-         ${SUNGEAR_DIR}/Externals/stb
-         ${SUNGEAR_DIR}/Externals/bullet3/src
-         ${SUNGEAR_DIR}/Externals/spdlog/include
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/GLM
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/entt/src
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/imgui
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/Assimp/include
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/OpenGL/include
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/GLFW/include
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/stb
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/bullet3/src
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/spdlog/include
          ${Vulkan_INCLUDE_DIR}
          #${BULLET_INCLUDE_DIR}
-         ${SUNGEAR_DIR}/Sources
-         ${SUNGEAR_DIR}/Externals/fmt/include
+         $ENV{SUNGEAR_SOURCES_ROOT}/Sources
+         $ENV{SUNGEAR_SOURCES_ROOT}/Externals/fmt/include
  )
 
  set(SG_RESOURCES_COPY_MODELS ON)
@@ -81,9 +77,9 @@
  set(SG_RESOURCES_COPY_FONTS ON)
  set(SG_RESOURCES_COPY_AUDIO ON)
 
- add_subdirectory(${SUNGEAR_DIR}/Sources/SGUtils Sources/SGUtils)
- add_subdirectory(${SUNGEAR_DIR}/Sources/SGConsole Sources/SGConsole)
- add_subdirectory(${SUNGEAR_DIR}/Sources/SGCore Sources/SGCore)
+ add_subdirectory($ENV{SUNGEAR_SOURCES_ROOT}/Sources/SGUtils Sources/SGUtils)
+ add_subdirectory($ENV{SUNGEAR_SOURCES_ROOT}/Sources/SGConsole Sources/SGConsole)
+ add_subdirectory($ENV{SUNGEAR_SOURCES_ROOT}/Sources/SGCore Sources/SGCore)
  # add_subdirectory(${SUNGEAR_DIR} Sungear)
 
  add_executable(${PROJECT_NAME} ${OCEANS_EDGE_SOURCES})
@@ -95,7 +91,7 @@
  if (${SG_RESOURCES_COPY_MODELS})
      add_custom_target(SGModelsCopy ALL
              COMMAND ${CMAKE_COMMAND} -E copy_directory
-             ${SUNGEAR_DIR}/Resources/SGResources/models
+             $ENV{SUNGEAR_SOURCES_ROOT}/Resources/SGResources/models
              ${CMAKE_BINARY_DIR}/SGResources/models
              COMMENT "Copying SGModels into binary directory")
 
@@ -113,7 +109,7 @@
  if (${SG_RESOURCES_COPY_SHADERS})
      add_custom_target(SGShadersCopy ALL
              COMMAND ${CMAKE_COMMAND} -E copy_directory
-             ${SUNGEAR_DIR}/Resources/SGResources/shaders
+             $ENV{SUNGEAR_SOURCES_ROOT}/Resources/SGResources/shaders
              ${CMAKE_BINARY_DIR}/SGResources/shaders
              COMMENT "Copying SGShaders into binary directory")
 
@@ -133,7 +129,7 @@
  if (${SG_RESOURCES_COPY_TEXTURES})
      add_custom_target(SGTexturesCopy ALL
           COMMAND ${CMAKE_COMMAND} -E copy_directory
-          ${SUNGEAR_DIR}/Resources/SGResources/textures
+          $ENV{SUNGEAR_SOURCES_ROOT}/Resources/SGResources/textures
           ${CMAKE_BINARY_DIR}/SGResources/textures
           COMMENT "Copying SGTextures into binary directory")
 
@@ -151,7 +147,7 @@
  if (${SG_RESOURCES_COPY_UI})
      add_custom_target(SGUICopy ALL
              COMMAND ${CMAKE_COMMAND} -E copy_directory
-             ${SUNGEAR_DIR}/Resources/SGResources/ui
+             $ENV{SUNGEAR_SOURCES_ROOT}/Resources/SGResources/ui
              ${CMAKE_BINARY_DIR}/SGResources/ui
              COMMENT "Copying SGUI into binary directory")
 
@@ -171,7 +167,7 @@
  if (${SG_RESOURCES_COPY_FONTS})
      add_custom_target(SGFontsCopy ALL
              COMMAND ${CMAKE_COMMAND} -E copy_directory
-             ${SUNGEAR_DIR}/Resources/SGResources/fonts
+             $ENV{SUNGEAR_SOURCES_ROOT}/Resources/SGResources/fonts
              ${CMAKE_BINARY_DIR}/SGResources/fonts
              COMMENT "Copying SGFonts into binary directory")
 

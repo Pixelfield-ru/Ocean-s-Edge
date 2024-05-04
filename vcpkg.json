@@ -29,7 +29,7 @@
   }, {
     "name" : "imgui",
     "version>=" : "1.90.2",
-    "features" : [ "glfw-binding", "opengl3-binding" ]
+    "features" : [ "glfw-binding", "opengl3-binding", "docking-experimental" ]
   }, {
     "name" : "vcpkg-cmake",
     "version>=" : "2023-05-04"
