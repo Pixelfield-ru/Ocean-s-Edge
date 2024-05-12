@@ -307,12 +307,16 @@ void OceansEdge::GameMain::update(const double& dt, const double& fixedDt)
         Settings::m_enableSSAO = !Settings::m_enableSSAO;
     }
     
-    if(SGCore::InputManager::getMainInputListener()->keyboardKeyDown(SGCore::KeyboardKey::KEY_LEFT_ALT) &&
+    if(SGCore::InputManager::getMainInputListener()->keyboardKeyDown(SGCore::KeyboardKey::KEY_LEFT_SHIFT) &&
        SGCore::InputManager::getMainInputListener()->keyboardKeyReleased(SGCore::KeyboardKey::KEY_Z))
     {
         std::lock_guard worldSaveLock(m_world->m_saveWorldMutex);
-        
+
+        std::cout << "saving world..." << std::endl;
+
         m_world->save();
+
+        std::cout << "world saved" << std::endl;
     }
 }
 
