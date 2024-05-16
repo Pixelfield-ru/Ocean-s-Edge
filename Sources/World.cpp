@@ -33,7 +33,7 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
 {
     m_audioEntitiesPool = SGCore::EntitiesPool(scene->getECSRegistry());
 
-    m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z);
+    m_chunkTmpBlocks = flat_array<std::uint16_t, 3>(Settings::m_chunksSize.x, Settings::m_chunksSize.y, Settings::m_chunksSize.z);
     
     auto& registry = scene->getECSRegistry();
     
@@ -61,13 +61,13 @@ void OceansEdge::World::prepareGrid(const SGCore::Ref<SGCore::Scene>& scene) noe
     // ========================================================================
     
     
-    const size_t totalSurfaceBlocksInChunkCnt = Settings::s_chunksSize.x * Settings::s_chunksSize.z * 2;
+    const size_t totalSurfaceBlocksInChunkCnt = Settings::m_chunksSize.x * Settings::m_chunksSize.z * 2;
     
     size_t curChunk = 0;
     size_t blockIdx = 0;
-    for(long x = -Settings::s_drawingRange; x < Settings::s_drawingRange; ++x)
+    for(long x = -Settings::m_drawingRange; x < Settings::m_drawingRange; ++x)
     {
-        for(long y = -Settings::s_drawingRange; y < Settings::s_drawingRange; ++y)
+        for(long y = -Settings::m_drawingRange; y < Settings::m_drawingRange; ++y)
         {
             auto chunk = SGCore::MakeRef<Chunk>();
             m_chunks[{ x, y }] = chunk;
@@ -87,14 +87,14 @@ void OceansEdge::World::buildChunksGrid
 {
     std::lock_guard worldSaveLock(m_saveWorldMutex);
     
-    ivec2_64 playerChunk = { std::floor(playerPosition.x / (Settings::s_chunksSize.x)), std::floor(playerPosition.z / (Settings::s_chunksSize.z)) };
+    ivec2_64 playerChunk = {std::floor(playerPosition.x / (Settings::m_chunksSize.x)), std::floor(playerPosition.z / (Settings::m_chunksSize.z)) };
     
     std::unordered_set<ivec2_64, SGCore::MathUtils::GLMVectorHash<ivec2_64>> tmpOccupiedIndices;
     
     size_t curEntityIdx = 0;
-    for(long cx = playerChunk.x - Settings::s_drawingRange; cx < playerChunk.x + Settings::s_drawingRange; ++cx)
+    for(long cx = playerChunk.x - Settings::m_drawingRange; cx < playerChunk.x + Settings::m_drawingRange; ++cx)
     {
-        for(long cy = playerChunk.y - Settings::s_drawingRange; cy < playerChunk.y + Settings::s_drawingRange; ++cy)
+        for(long cy = playerChunk.y - Settings::m_drawingRange; cy < playerChunk.y + Settings::m_drawingRange; ++cy)
         {
             tmpOccupiedIndices.insert(ivec2_64 { cx, cy });
         }
@@ -154,21 +154,21 @@ void OceansEdge::World::buildChunksGrid
             
             m_visibleBlocksTypes[chunkIdx].clear();
             
-            const glm::vec3 chunkPosition = { chunkIdx.x * Settings::s_chunksSize.x, 0, chunkIdx.y * Settings::s_chunksSize.z };
+            const glm::vec3 chunkPosition = { chunkIdx.x * Settings::m_chunksSize.x, 0, chunkIdx.y * Settings::m_chunksSize.z };
             chunk->m_position.x = chunkPosition.x;
             chunk->m_position.y = 0;
             chunk->m_position.z = chunkPosition.z;
             
             chunk->m_aabb.m_min = chunkPosition;
-            chunk->m_aabb.m_max = chunkPosition + glm::vec3 { Settings::s_chunksSize.x, Settings::s_chunksSize.y, Settings::s_chunksSize.z };
+            chunk->m_aabb.m_max = chunkPosition + glm::vec3 {Settings::m_chunksSize.x, Settings::m_chunksSize.y, Settings::m_chunksSize.z };
             
             // todo: make flexible settings
             /*perlinNoise.generate((lvec2 { chunkIdx.x, chunkIdx.y } + lvec2 { Settings::s_drawingRange / 2, Settings::s_drawingRange / 2 }) * lvec2 { Settings::s_chunksSize.x * 2, Settings::s_chunksSize.z * 2 },
                                  { Settings::s_chunksSize.x, Settings::s_chunksSize.z}, 3, 0.6f);*/
             
-            const long endX = Settings::s_chunksSize.x;
+            const long endX = Settings::m_chunksSize.x;
             // const long endY = Settings::s_chunksSize.y;
-            const long endZ = Settings::s_chunksSize.z;
+            const long endZ = Settings::m_chunksSize.z;
             
             chunk->m_currentIndex = 0;
             
@@ -189,9 +189,9 @@ void OceansEdge::World::buildChunksGrid
                 for(long z = 0; z < endZ; ++z)
                 {
                     double thisRawY = m_perlinNoise.octave2D_11((chunkPosition.x + (float) x) * 0.01, (chunkPosition.z + (float) z) * 0.01, 2);
-                    const long thisEndY = std::clamp<long>(std::ceil(Settings::s_chunksSize.y / 2 + thisRawY * 50), 1, Settings::s_chunksSize.y - 1);
+                    const long thisEndY = std::clamp<long>(std::ceil(Settings::m_chunksSize.y / 2 + thisRawY * 50), 1, Settings::m_chunksSize.y - 1);
                     
-                    for(long y = 0; y < Settings::s_chunksSize.y; ++y)
+                    for(long y = 0; y < Settings::m_chunksSize.y; ++y)
                     {
                         auto& blockType = m_chunkTmpBlocks[x][y][z]; // chunk->m_blocks[x][y][z];
                         
@@ -228,7 +228,7 @@ void OceansEdge::World::buildChunksGrid
                     long pz = std::min(endZ - 1, z + 1);
                     long mz = std::max<long>(0, z - 1);
                     
-                    for(long y = 0; y < Settings::s_chunksSize.y; ++y)
+                    for(long y = 0; y < Settings::m_chunksSize.y; ++y)
                     {
                         std::uint16_t blockType = m_chunkTmpBlocks[x][y][z];
                         
@@ -237,7 +237,7 @@ void OceansEdge::World::buildChunksGrid
                             continue;
                         }
                         
-                        long py = std::min<long>(Settings::s_chunksSize.y - 1, y + 1);
+                        long py = std::min<long>(Settings::m_chunksSize.y - 1, y + 1);
                         long my = std::max<long>(0, y - 1);
                         
                         ivec3_32 blockPos = { x, y, z };
@@ -578,16 +578,16 @@ void OceansEdge::World::buildChunksGrid
                 // top face
                 if(foundFaceIdx == 0)
                 {
-                    blockToPutIdx.y = std::clamp<float>(blockToPutIdx.y + 1, 0, Settings::s_chunksSize.y);
+                    blockToPutIdx.y = std::clamp<float>(blockToPutIdx.y + 1, 0, Settings::m_chunksSize.y);
                 }
                 else if(foundFaceIdx == 1)
                 {
-                    blockToPutIdx.y = std::clamp<float>(blockToPutIdx.y - 1, 0, Settings::s_chunksSize.y);
+                    blockToPutIdx.y = std::clamp<float>(blockToPutIdx.y - 1, 0, Settings::m_chunksSize.y);
                 }
                 else if(foundFaceIdx == 2)
                 {
                     ++blockToPutIdx.x;
-                    if(blockToPutIdx.x > Settings::s_chunksSize.x - 1)
+                    if(blockToPutIdx.x > Settings::m_chunksSize.x - 1)
                     {
                         ++chunkToPutIdx.x;
                         blockToPutIdx.x = 0;
@@ -599,13 +599,13 @@ void OceansEdge::World::buildChunksGrid
                     if(blockToPutIdx.x < 0)
                     {
                         --chunkToPutIdx.x;
-                        blockToPutIdx.x = Settings::s_chunksSize.x - 1;
+                        blockToPutIdx.x = Settings::m_chunksSize.x - 1;
                     }
                 }
                 else if(foundFaceIdx == 4)
                 {
                     ++blockToPutIdx.z;
-                    if(blockToPutIdx.z > Settings::s_chunksSize.z - 1)
+                    if(blockToPutIdx.z > Settings::m_chunksSize.z - 1)
                     {
                         ++chunkToPutIdx.y;
                         blockToPutIdx.z = 0;
@@ -617,7 +617,7 @@ void OceansEdge::World::buildChunksGrid
                     if(blockToPutIdx.z < 0)
                     {
                         --chunkToPutIdx.y;
-                        blockToPutIdx.z = Settings::s_chunksSize.z - 1;
+                        blockToPutIdx.z = Settings::m_chunksSize.z - 1;
                     }
                 }
                 
